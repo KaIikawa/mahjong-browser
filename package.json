@@ -1,0 +1,22 @@
+{
+  "name": "mahjong-mono",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=packages/client",
+    "server": "npm run dev --workspace=packages/server",
+    "build": "npm run build --workspace=packages/server && npm run build --workspace=packages/client",
+    "build:client": "npm run build --workspace=packages/client",
+    "build:server": "npm run build --workspace=packages/server",
+    "start": "node packages/server/dist/index.js",
+    "start:server": "npm run start --workspace=packages/server"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0"
+  }
+}

@@ -1,0 +1,742 @@
+/* ─── リセット ─────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ─── 全体 ─────────────────────────────────────────── */
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+h1 {
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+  color: #f0c040;
+}
+
+/* ─── 盤面 ─────────────────────────────────────────── */
+.board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 1400px;
+}
+
+/* ─── スコアパネル ──────────────────────────────────── */
+.score-panel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 700px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(240, 192, 64, 0.3);
+  border-radius: 8px;
+  padding: 6px 14px;
+}
+
+.score-round {
+  font-size: 15px;
+  font-weight: bold;
+  color: #f0c040;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  min-width: 70px;
+}
+
+.score-list {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.score-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 56px;
+}
+
+.score-entry--parent .score-name {
+  color: #f0c040;
+}
+
+.score-name {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.score-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+}
+
+/* ─── 半荘終了オーバーレイ ─────────────────────────── */
+.finished-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 18px 36px;
+  background: linear-gradient(135deg, rgba(20, 80, 160, 0.95), rgba(10, 40, 100, 0.95));
+  border: 2px solid #4a9eff;
+  border-radius: 12px;
+  box-shadow: 0 0 24px rgba(74, 158, 255, 0.5);
+}
+
+.finished-title {
+  font-size: 26px;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 10px rgba(74, 158, 255, 0.8);
+}
+
+.rank-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.rank-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rank-row--self {
+  background: rgba(240, 192, 64, 0.2);
+  border: 1px solid rgba(240, 192, 64, 0.4);
+}
+
+.rank-num {
+  font-size: 16px;
+  font-weight: bold;
+  color: #f0c040;
+  min-width: 28px;
+}
+
+.rank-name {
+  font-size: 14px;
+  color: #fff;
+  min-width: 40px;
+}
+
+.rank-score {
+  font-size: 14px;
+  font-weight: bold;
+  color: #7dd7ff;
+  text-align: right;
+  flex: 1;
+}
+
+/* ─── 中段 (上家|中央テーブル|下家) ────────────────── */
+.middle-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* ─── 各プレイヤーエリア ────────────────────────────── */
+.area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.area--toimen {
+  width: 100%;
+}
+
+.area--kami,
+.area--simo {
+  flex-shrink: 0;
+}
+
+.area--player {
+  width: 100%;
+  padding-top: 6px;
+}
+
+/* ─── プレイヤーラベル ──────────────────────────────── */
+.player-label {
+  font-size: 11px;
+  color: #aaa;
+  letter-spacing: 0.05em;
+}
+
+/* ─── 中央テーブル (緑の卓) ─────────────────────────── */
+.center-table {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #0f5c28;
+  border-radius: 10px;
+  min-width: 640px;
+  padding: 12px 16px;
+  gap: 6px;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── 中段行 (上家河 | 山情報 | 下家河) ──────────────── */
+.center-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  align-self: stretch;
+  flex: 1;
+}
+
+/* ─── 山情報エリア ──────────────────────────────────── */
+.wall-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 90px;
+  gap: 6px;
+}
+
+.wall-count {
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.wall-count__num {
+  display: block;
+  font-size: 30px;
+  color: #f0c040;
+  line-height: 1;
+}
+
+.phase-msg {
+  font-size: 11px;
+  color: #ccc;
+  text-align: center;
+  min-height: 16px;
+}
+
+/* ─── 捨て牌ゾーン (共通) ───────────────────────────── */
+.discard-zone {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  padding: 3px;
+}
+
+/* 自分・対面: 横並び 8枚で折り返し・幅は8枚ちょうど */
+.discard-zone--player,
+.discard-zone--toimen {
+  display: grid;
+  grid-template-columns: repeat(8, 48px);
+  gap: 2px;
+  align-content: start;
+  /* 8枚×48px + 7gap×2px = 398px、padding含め固定幅 */
+  width: calc(8 * 48px + 7 * 2px);
+  min-height: 52px;
+}
+
+/* 上家・下家: 縦並び 8枚で折り返し・幅は列数で自動 */
+.discard-zone--kami,
+.discard-zone--simo {
+  display: grid;
+  grid-template-rows: repeat(8, 48px);
+  grid-auto-flow: column;
+  gap: 2px;
+  min-width: 52px;
+  /* 高さは8×48+7×2=398px に収める */
+  max-height: calc(8 * 48px + 7 * 2px);
+}
+
+/* ─── 捨て牌画像 ────────────────────────────────────── */
+/* 全方向で 48×48px の正方形スロットに object-fit: contain で収める。
+   縦向き画像 (33×59) も横向き画像 (59×33) も同一スケール (0.81x) で表示される */
+.discard-tile {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+/* ─── 手牌コンテナ ──────────────────────────────────── */
+.hand {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* 現在手番のCPU手牌をハイライト */
+.hand--active {
+  outline: 2px solid #f0c040;
+  border-radius: 4px;
+  outline-offset: 2px;
+}
+
+/* 対面: 横並び */
+.hand--toimen {
+  flex-direction: row;
+}
+
+/* 上家: 縦並び */
+.hand--kami {
+  flex-direction: column;
+}
+
+/* 下家: 縦並び */
+.hand--simo {
+  flex-direction: column;
+}
+
+/* 自分: 横並び */
+.hand--player {
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+/* ─── 牌画像 ────────────────────────────────────────── */
+.tile {
+  display: block;
+  height: 56px;
+  width: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+  transition: transform 0.1s ease, filter 0.1s ease;
+}
+
+/* 上家・下家の裏牌は横向き画像(59x33)なので高さを抑える */
+.hand--kami .tile--back,
+.hand--simo .tile--back {
+  height: 28px;
+}
+
+/* 対面の裏牌 */
+.hand--toimen .tile--back {
+  height: 44px;
+}
+
+/* ─── 手牌: ホバー・選択 ────────────────────────────── */
+.tile--hand:hover {
+  transform: translateY(-6px);
+}
+
+.tile--drawn:hover {
+  transform: translateY(-6px);
+}
+
+.tile--selected {
+  transform: translateY(-10px) !important;
+  filter: brightness(1.15) drop-shadow(0 0 6px #f0c040);
+}
+
+/* ─── ツモ牌区切り ──────────────────────────────────── */
+.tile-sep {
+  display: inline-block;
+  width: 10px;
+  flex-shrink: 0;
+}
+
+/* ─── ツモ牌スロット: 常に牌1枚分の幅を確保 ─────────── */
+.tile-drawn-slot {
+  width: 33px;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* ─── ボタン行 ──────────────────────────────────────── */
+.btn-row {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* ─── 流局オーバーレイ ──────────────────────────────── */
+.ryukyoku-overlay {
+  margin-top: 10px;
+  padding: 6px 24px;
+  background: rgba(200, 50, 50, 0.85);
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  color: #fff;
+  text-align: center;
+}
+
+/* ─── ボタン ────────────────────────────────────────── */
+.btn {
+  margin-top: 8px;
+  padding: 8px 28px;
+  font-size: 15px;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--discard {
+  background: #c0392b;
+  color: #fff;
+}
+
+.btn--discard:hover:not(:disabled) {
+  background: #e74c3c;
+}
+
+.btn--tsumo {
+  background: #27ae60;
+  color: #fff;
+}
+
+.btn--tsumo:hover:not(:disabled) {
+  background: #2ecc71;
+}
+
+.btn--riichi {
+  background: #8e44ad;
+  color: #fff;
+}
+
+.btn--riichi:hover:not(:disabled) {
+  background: #9b59b6;
+}
+
+.btn--restart {
+  background: #f0c040;
+  color: #1a1a2e;
+  font-weight: bold;
+  margin-top: 10px;
+  padding: 8px 24px;
+}
+
+.btn--restart:hover {
+  background: #f8d860;
+}
+
+/* ─── テンパイラベル ─────────────────────────────────── */
+.tenpai-label {
+  display: inline-block;
+  padding: 2px 10px;
+  background: #e67e22;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 4px;
+  letter-spacing: 0.1em;
+  animation: tenpai-pulse 1s ease-in-out infinite;
+}
+
+/* ─── リーチラベル ───────────────────────────────────── */
+.riichi-label {
+  display: inline-block;
+  padding: 2px 10px;
+  background: #8e44ad;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  border-radius: 4px;
+  letter-spacing: 0.1em;
+  animation: tenpai-pulse 1s ease-in-out infinite;
+}
+
+@keyframes tenpai-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ─── 和了オーバーレイ ──────────────────────────────── */
+.agari-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, rgba(180, 140, 20, 0.95), rgba(120, 80, 10, 0.95));
+  border: 2px solid #f0c040;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(240, 192, 64, 0.6);
+}
+
+.agari-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 0.3em;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.agari-winner {
+  font-size: 14px;
+  color: #ffe599;
+  letter-spacing: 0.1em;
+}
+
+/* ─── 和了画面: 役テーブル ───────────────────────────── */
+.agari-yaku-table {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  padding-top: 4px;
+}
+
+.agari-yaku-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #fff;
+}
+
+.yaku-name {
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.yaku-han {
+  color: #f0c040;
+  font-weight: bold;
+  min-width: 28px;
+  text-align: right;
+}
+
+.agari-yaku-total {
+  font-size: 13px;
+  color: #ccc;
+  text-align: right;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 2px;
+  margin-top: 2px;
+}
+
+/* ─── 和了点数表示 ───────────────────────────────────── */
+.agari-score {
+  font-size: 20px;
+  font-weight: bold;
+  color: #f0c040;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+  text-shadow: 0 0 8px rgba(240, 192, 64, 0.8);
+}
+
+/* ─── ドラ表示 (山情報内) ───────────────────────────── */
+.dora-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.dora-label {
+  font-size: 10px;
+  color: #aaa;
+  letter-spacing: 0.05em;
+}
+
+.dora-tile {
+  display: block;
+  height: 36px;
+  width: auto;
+  border: 1px solid #f0c040;
+  border-radius: 2px;
+}
+
+/* ─── 流局オーバーレイ ──────────────────────────────── */
+.ryukyoku-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 10px 24px;
+  background: rgba(200, 50, 50, 0.85);
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  color: #fff;
+  text-align: center;
+}
+
+/* ─── ロビー画面 ────────────────────────────────────── */
+.lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 24px;
+  max-width: 400px;
+  margin: 60px auto;
+  background: #1a3a1a;
+  border: 2px solid #4a8a4a;
+  border-radius: 12px;
+  color: #e8e8e8;
+}
+
+.lobby h2 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.lobby__btn {
+  width: 100%;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.lobby__btn:hover {
+  opacity: 0.85;
+}
+
+.lobby__btn--offline {
+  background: #5a8a2a;
+  color: #fff;
+}
+
+.lobby__btn--online {
+  background: #2a6a9a;
+  color: #fff;
+}
+
+.lobby__sep {
+  color: #888;
+  font-size: 13px;
+}
+
+.lobby__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.lobby__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.lobby__input {
+  padding: 8px 10px;
+  font-size: 15px;
+  border: 1px solid #4a8a4a;
+  border-radius: 6px;
+  background: #0e240e;
+  color: #e8e8e8;
+  outline: none;
+}
+
+.lobby__input:focus {
+  border-color: #8aca8a;
+}
+
+.lobby__error {
+  color: #f06060;
+  font-size: 13px;
+  min-height: 18px;
+  margin: 0;
+}
+
+/* 待機中 */
+.lobby--waiting .lobby__count {
+  font-size: 18px;
+  font-weight: bold;
+  color: #8aca8a;
+  margin: 0;
+}
+
+.lobby--waiting .lobby__pos {
+  font-size: 13px;
+  color: #aaa;
+  margin: 0;
+}
+
+.lobby__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #4a8a4a;
+  border-top-color: #8aca8a;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* エラー */
+.lobby--error .lobby__error-msg {
+  color: #f06060;
+  font-size: 15px;
+  text-align: center;
+  margin: 0;
+}

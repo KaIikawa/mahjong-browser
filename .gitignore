@@ -1,0 +1,9 @@
+node_modules/
+dist/
+
+# 本番用の環境変数ファイルはコミットしない
+packages/client/.env.production
+
+# ビルド成果物
+packages/client/dist/
+packages/server/dist/
