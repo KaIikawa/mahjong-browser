@@ -67,11 +67,10 @@ function restart(): void {
 
 // オンラインでの操作は WsClient 経由でサーバーに送信する
 // (サーバーがゲームを更新して全員に broadcast する)
+// 牌の選択など「ローカルのみ」の状態変化もここで再レンダリングする
 function onlineUpdate(newState: GameState): void {
-  // オンライン時は state を直接上書きしない。
-  // ユーザーのアクション(discard/tsumo/riichi)はそれぞれ別途 send するため
-  // ここでは何もしない (board.ts 内ボタンから直接 sendAction を呼ぶ)
-  void newState;
+  gameState = newState;
+  renderBoard(gameState, onlineUpdate, restart, nextRound, myPosition);
 }
 
 export function sendAction(msg: Parameters<WsClient['send']>[0]): void {

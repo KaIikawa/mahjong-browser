@@ -261,14 +261,8 @@ function buildPlayerHand(
       onClick: isMyTurn && !isRiichi
         ? () => {
             if (isOnline) {
-              // オンライン: 選択状態をローカル更新するだけ (discard 送信は捨てボタン)
-              // state.selectedIndex を直接操作できないため onUpdate 経由は使わず
-              // UI 上の選択ハイライトだけ再描画する簡易実装
               const selected = state.selectedIndex === i ? null : i;
-              const tileEls = handEl.querySelectorAll('.tile--hand');
-              tileEls.forEach((el, j) => el.classList.toggle('tile--selected', j === selected));
-              // selectedIndex を state に反映 (後続の discard ボタンが参照)
-              state.selectedIndex = selected;
+              onUpdate({ ...state, selectedIndex: selected });
             } else {
               onUpdate(selectTile(state, i));
             }
@@ -285,21 +279,18 @@ function buildPlayerHand(
   const drawnSlot = document.createElement('div');
   drawnSlot.className = 'tile-drawn-slot';
 
-  if (state.drawnTile) {
+  if (state.drawnTile && isMyTurn) {
     drawnSlot.appendChild(buildTileImg(state.drawnTile, {
       selected: state.selectedIndex === -1,
       className: 'tile--drawn',
-      onClick: isMyTurn
-        ? () => {
-            if (isOnline) {
-              state.selectedIndex = state.selectedIndex === -1 ? null : -1;
-              const drawnEl = drawnSlot.querySelector('img');
-              if (drawnEl) drawnEl.classList.toggle('tile--selected', state.selectedIndex === -1);
-            } else {
-              onUpdate(selectTile(state, -1));
-            }
-          }
-        : undefined,
+      onClick: () => {
+        if (isOnline) {
+          const selected = state.selectedIndex === -1 ? null : -1;
+          onUpdate({ ...state, selectedIndex: selected });
+        } else {
+          onUpdate(selectTile(state, -1));
+        }
+      },
     }));
   }
 
