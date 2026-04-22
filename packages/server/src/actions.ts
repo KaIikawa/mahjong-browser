@@ -78,6 +78,7 @@ export function initGameState(match?: MatchState, playerNames?: Map<Position, st
     riichi,
     match: currentMatch,
     playerNames: names,
+    waitingRon: null,
   };
 }
 
@@ -114,13 +115,33 @@ export function discardTileAt(state: GameState, pos: Position, index: number): G
   };
 
   const next = nextTurn(pos);
-  return drawForPlayer({
+  const stateAfterDiscard: GameState = {
     ...state,
     players: newPlayers,
     drawnTile: null,
     selectedIndex: null,
     currentTurn: next,
-  }, next);
+  };
+
+  // ロン可能なプレイヤーを確認 (捨てたプレイヤー以外)
+  const ronCandidates = TURN_ORDER.filter(p => {
+    if (p === pos) return false;
+    const hand = state.players[p].hand;
+    const fullHand = [...hand, discarded];
+    if (!isAgari(fullHand)) return false;
+    const yakuList = detectYaku(fullHand, false, state.riichi[p], state.doraTile, p);
+    return hasValidYaku(yakuList);
+  });
+
+  if (ronCandidates.length > 0) {
+    return {
+      ...stateAfterDiscard,
+      phase: 'waitingRon',
+      waitingRon: { discarder: pos, tile: discarded, candidates: ronCandidates },
+    };
+  }
+
+  return drawForPlayer(stateAfterDiscard, next);
 }
 
 // ─── ツモ和了 (任意 Position) ────────────────────────────
@@ -182,4 +203,58 @@ export function declareRiichiAt(state: GameState, pos: Position): GameState {
     riichi: { ...state.riichi, [pos]: true },
     currentTurn: next,
   }, next);
+}
+
+// ─── ロン和了 (任意 Position) ─────────────────────────────
+export function declareRonAt(state: GameState, pos: Position): GameState {
+  if (state.phase !== 'waitingRon' || !state.waitingRon) return state;
+  if (!state.waitingRon.candidates.includes(pos)) return state;
+
+  const tile = state.waitingRon.tile;
+  const hand = [...state.players[pos].hand, tile];
+  const isRiichi = state.riichi[pos];
+  const yakuList = detectYaku(hand, false, isRiichi, state.doraTile, pos);
+  if (!hasValidYaku(yakuList)) return state;
+
+  const isParent = getParent(state.match.round) === pos;
+  const scoreResult = calcScore(yakuList, hand, false, isParent);
+
+  return {
+    ...state,
+    phase: 'agari',
+    waitingRon: null,
+    agariInfo: {
+      winner: pos,
+      tile,
+      isTsumo: false,
+      yakuList,
+      han: scoreResult.han,
+      fu: scoreResult.fu,
+      score: scoreResult.score,
+      scoreDetail: scoreResult.scoreDetail,
+    },
+  };
+}
+
+// ─── ロンキャンセル (任意 Position) ──────────────────────
+// キャンセル後、全員がキャンセルしたら次のプレイヤーへ進む
+export function cancelRonAt(state: GameState, pos: Position): GameState {
+  if (state.phase !== 'waitingRon' || !state.waitingRon) return state;
+  if (!state.waitingRon.candidates.includes(pos)) return state;
+
+  const newCandidates = state.waitingRon.candidates.filter(p => p !== pos);
+
+  if (newCandidates.length > 0) {
+    // まだ待機中のプレイヤーがいる
+    return {
+      ...state,
+      waitingRon: { ...state.waitingRon, candidates: newCandidates },
+    };
+  }
+
+  // 全員キャンセル → 次のプレイヤーのツモへ
+  return drawForPlayer({
+    ...state,
+    waitingRon: null,
+  }, state.currentTurn);
 }

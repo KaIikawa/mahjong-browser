@@ -50,6 +50,7 @@ export function initGameState(match?: MatchState): GameState {
     riichi,
     match: currentMatch,
     playerNames: { player: 'あなた', simo: 'CPU南', toimen: 'CPU西', kami: 'CPU北' },
+    waitingRon: null,
   };
 }
 
@@ -242,6 +243,23 @@ export function cpuDrawAndDiscard(state: GameState): GameState {
     selectedIndex: null,
   };
 
+  // プレイヤー (自分) がロン可能か確認
+  const playerHand = state.players['player'].hand;
+  const playerFullHand = [...playerHand, discarded];
+  if (isAgari(playerFullHand)) {
+    const isRiichi = state.riichi['player'];
+    const yakuList = detectYaku(playerFullHand, false, isRiichi, state.doraTile, 'player');
+    if (hasValidYaku(yakuList)) {
+      const nextPos = nextTurn(pos);
+      return {
+        ...afterDiscard,
+        phase: 'waitingRon',
+        waitingRon: { discarder: pos, tile: discarded, candidates: ['player'] },
+        currentTurn: nextPos,
+      };
+    }
+  }
+
   return nextState(afterDiscard, nextTurn(pos));
 }
 
@@ -271,3 +289,40 @@ function nextState(state: GameState, next: Position): GameState {
   };
 }
 
+// ─── ロン和了 (プレイヤーのみ) ───────────────────────
+export function declareRon(state: GameState): GameState {
+  if (state.phase !== 'waitingRon' || !state.waitingRon) return state;
+  if (!state.waitingRon.candidates.includes('player')) return state;
+
+  const tile = state.waitingRon.tile;
+  const hand = [...state.players['player'].hand, tile];
+  const isRiichi = state.riichi['player'];
+  const yakuList = detectYaku(hand, false, isRiichi, state.doraTile, 'player');
+  if (!hasValidYaku(yakuList)) return state;
+
+  const isParent = getParent(state.match.round) === 'player';
+  const scoreResult = calcScore(yakuList, hand, false, isParent);
+
+  return {
+    ...state,
+    phase: 'agari',
+    waitingRon: null,
+    agariInfo: {
+      winner: 'player',
+      tile,
+      isTsumo: false,
+      yakuList,
+      han: scoreResult.han,
+      fu: scoreResult.fu,
+      score: scoreResult.score,
+      scoreDetail: scoreResult.scoreDetail,
+    },
+  };
+}
+
+// ─── ロンキャンセル (プレイヤーのみ) ─────────────────
+// 見逃し: 次の CPU ターンへ進む
+export function cancelRon(state: GameState): GameState {
+  if (state.phase !== 'waitingRon' || !state.waitingRon) return state;
+  return nextState({ ...state, waitingRon: null }, state.currentTurn);
+}

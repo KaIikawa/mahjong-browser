@@ -1,7 +1,7 @@
 import type { GameState, Position, Tile } from '@mahjong/shared';
 import { ROUND_LABELS, TURN_ORDER } from '@mahjong/shared';
 import { getTileImagePath, getDiscardImagePath, getBackImagePath, getTileLabel } from '@mahjong/shared';
-import { selectTile, discardTile, declareTsumo, declareRiichi } from '../game/state';
+import { selectTile, discardTile, declareTsumo, declareRiichi, declareRon, cancelRon } from '../game/state';
 import { calcShanten, isAgari } from '@mahjong/shared';
 import { isTenpai } from '@mahjong/shared';
 import { hasValidYaku, detectYaku } from '@mahjong/shared';
@@ -213,6 +213,8 @@ function buildWallInfo(state: GameState): HTMLElement {
     msg.textContent = `${winnerLabels[state.agariInfo!.winner]}の和了！`;
   } else if (state.phase === 'ryukyoku') {
     msg.textContent = '流局';
+  } else if (state.phase === 'waitingRon') {
+    msg.textContent = 'ロン確認中...';
   }
   info.appendChild(msg);
 
@@ -417,6 +419,33 @@ function buildPlayerArea(
     });
   }
   btnRow.appendChild(tsumoBtn);
+
+  // ロン/キャンセルボタン (waitingRon フェーズで自分がロン候補の場合)
+  if (state.phase === 'waitingRon' && state.waitingRon?.candidates.includes(selfPos)) {
+    const ronBtn = document.createElement('button');
+    ronBtn.className = 'btn btn--ron';
+    ronBtn.textContent = 'ロン';
+    ronBtn.addEventListener('click', () => {
+      if (isOnline) {
+        sendAction({ type: 'ron' });
+      } else {
+        onUpdate(declareRon(state));
+      }
+    });
+    btnRow.appendChild(ronBtn);
+
+    const cancelRonBtn = document.createElement('button');
+    cancelRonBtn.className = 'btn btn--cancel-ron';
+    cancelRonBtn.textContent = 'キャンセル';
+    cancelRonBtn.addEventListener('click', () => {
+      if (isOnline) {
+        sendAction({ type: 'cancelRon' });
+      } else {
+        onUpdate(cancelRon(state));
+      }
+    });
+    btnRow.appendChild(cancelRonBtn);
+  }
 
   area.appendChild(btnRow);
 

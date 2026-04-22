@@ -14,6 +14,8 @@ import {
   discardTileAt,
   declareTsumoAt,
   declareRiichiAt,
+  declareRonAt,
+  cancelRonAt,
 } from './actions.js';
 
 // ─── 型定義 ───────────────────────────────────────────
@@ -125,6 +127,12 @@ export function handleMessage(ws: WebSocket, msg: C2SMessage): void {
       break;
     case 'riichi':
       newState = declareRiichiAt(room.state, pos);
+      break;
+    case 'ron':
+      newState = declareRonAt(room.state, pos);
+      break;
+    case 'cancelRon':
+      newState = cancelRonAt(room.state, pos);
       break;
     case 'nextRound': {
       if (newState.phase !== 'agari' && newState.phase !== 'ryukyoku') return;

@@ -28,7 +28,8 @@ export interface PlayerState {
 // cpuTurn    : CPU のツモ番 (自動処理中)
 // agari      : 和了確定
 // ryukyoku   : 流局確定 (山が尽きた)
-export type GamePhase = 'playerTurn' | 'cpuTurn' | 'agari' | 'ryukyoku';
+// waitingRon : ロン確認待ち (捨て牌後、ロン可能なプレイヤーの応答を待つ)
+export type GamePhase = 'playerTurn' | 'cpuTurn' | 'agari' | 'ryukyoku' | 'waitingRon';
 
 // ─── 役 ──────────────────────────────────────────────
 export interface YakuResult {
@@ -78,6 +79,13 @@ export function initMatchState(): MatchState {
   };
 }
 
+// ─── ロン確認待ちの状態 ───────────────────────────────
+export interface WaitingRonState {
+  discarder: Position;    // 捨てたプレイヤー
+  tile: Tile;             // 捨て牌
+  candidates: Position[]; // ロン可能でまだ応答していないプレイヤー
+}
+
 // ─── ゲーム全体の状態 ─────────────────────────────────
 export interface GameState {
   wall: Tile[];                          // 山 (残り牌)
@@ -91,4 +99,5 @@ export interface GameState {
   riichi: Record<Position, boolean>;   // リーチ状態
   match: MatchState;                    // 対局状態
   playerNames: Record<Position, string>; // プレイヤー名
+  waitingRon: WaitingRonState | null;  // ロン確認待ち (phase === 'waitingRon' 時のみ非null)
 }
