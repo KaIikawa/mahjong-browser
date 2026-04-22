@@ -46,15 +46,24 @@ function buildBoard(
   // スコアパネル (常時表示)
   board.appendChild(buildScorePanel(state));
 
+  // 座席マッピング: 画面上の見た目位置 → 実際の座席
+  // selfPos=自分, simoPos=右(下家), toimenPos=上(対面), kamiPos=左(上家)
+  const selfPos:   Position = myPosition ?? 'player';
+  const order = TURN_ORDER; // ['player','simo','toimen','kami']
+  const selfIdx = order.indexOf(selfPos);
+  const simoPos:   Position = order[(selfIdx + 1) % 4];
+  const toimenPos: Position = order[(selfIdx + 2) % 4];
+  const kamiPos:   Position = order[(selfIdx + 3) % 4];
+
   // ① 対面エリア (上) - 手牌のみ
-  board.appendChild(buildToimenArea(state));
+  board.appendChild(buildOpponentArea(state, toimenPos, 'toimen'));
 
   // ② 中段: 上家 | 中央テーブル(河+山情報) | 下家
   const middle = document.createElement('div');
   middle.className = 'middle-row';
-  middle.appendChild(buildSideArea(state, 'kami'));
-  middle.appendChild(buildCenterTable(state));
-  middle.appendChild(buildSideArea(state, 'simo'));
+  middle.appendChild(buildOpponentArea(state, kamiPos, 'kami'));
+  middle.appendChild(buildCenterTable(state, selfPos, simoPos, toimenPos, kamiPos));
+  middle.appendChild(buildOpponentArea(state, simoPos, 'simo'));
   board.appendChild(middle);
 
   // ③ 自分エリア (下) - 手牌+ボタン
@@ -110,48 +119,44 @@ function buildScorePanel(state: GameState): HTMLElement {
   return panel;
 }
 
-// ─── 対面エリア (手牌のみ) ───────────────────────────
-function buildToimenArea(state: GameState): HTMLElement {
+// ─── 対面/上家/下家エリア (手牌のみ) ─────────────────────
+function buildOpponentArea(state: GameState, actualPos: Position, visualPos: 'toimen' | 'kami' | 'simo'): HTMLElement {
   const area = document.createElement('div');
-  area.className = 'area area--toimen';
+  area.className = `area area--${visualPos}`;
 
-  area.appendChild(buildLabel('対面'));
-  area.appendChild(buildCpuHand(state, 'toimen'));
-
-  return area;
-}
-
-// ─── 上家 / 下家エリア (手牌のみ) ────────────────────
-function buildSideArea(state: GameState, pos: 'kami' | 'simo'): HTMLElement {
-  const area = document.createElement('div');
-  area.className = `area area--${pos}`;
-
-  area.appendChild(buildLabel(pos === 'kami' ? '上家' : '下家'));
-  area.appendChild(buildCpuHand(state, pos));
+  const labels: Record<string, string> = { toimen: '対面', kami: '上家', simo: '下家' };
+  area.appendChild(buildLabel(labels[visualPos]));
+  area.appendChild(buildCpuHand(state, actualPos, visualPos));
 
   return area;
 }
 
 // ─── 中央テーブル (4方向の河 + 山残り情報) ─────────────
-function buildCenterTable(state: GameState): HTMLElement {
+function buildCenterTable(
+  state: GameState,
+  selfPos: Position,
+  simoPos: Position,
+  toimenPos: Position,
+  kamiPos: Position,
+): HTMLElement {
   const center = document.createElement('div');
   center.className = 'center-table';
 
   // 上段: 対面の河
-  center.appendChild(buildDiscardZone(state, 'toimen'));
+  center.appendChild(buildDiscardZone(state, toimenPos, 'toimen'));
 
   // 中段: 上家の河 | 山情報 | 下家の河
   const centerRow = document.createElement('div');
   centerRow.className = 'center-row';
 
-  centerRow.appendChild(buildDiscardZone(state, 'kami'));
+  centerRow.appendChild(buildDiscardZone(state, kamiPos, 'kami'));
   centerRow.appendChild(buildWallInfo(state));
-  centerRow.appendChild(buildDiscardZone(state, 'simo'));
+  centerRow.appendChild(buildDiscardZone(state, simoPos, 'simo'));
 
   center.appendChild(centerRow);
 
   // 下段: 自分の河
-  center.appendChild(buildDiscardZone(state, 'player'));
+  center.appendChild(buildDiscardZone(state, selfPos, 'player'));
 
   return center;
 }
@@ -211,13 +216,14 @@ function buildWallInfo(state: GameState): HTMLElement {
 }
 
 // ─── 捨て牌ゾーン (4方向共通、_furo.gif を使用) ─────────
-function buildDiscardZone(state: GameState, pos: Position): HTMLElement {
+// actualPos: データアクセス用実座席, visualPos: CSS/画像パス用視覚位置
+function buildDiscardZone(state: GameState, actualPos: Position, visualPos: Position): HTMLElement {
   const zone = document.createElement('div');
-  zone.className = `discard-zone discard-zone--${pos}`;
+  zone.className = `discard-zone discard-zone--${visualPos}`;
 
-  state.players[pos].discards.forEach((tile) => {
+  state.players[actualPos].discards.forEach((tile) => {
     const img = document.createElement('img');
-    img.src = getDiscardImagePath(tile, pos);
+    img.src = getDiscardImagePath(tile, visualPos);
     img.alt = getTileLabel(tile);
     img.draggable = false;
     img.className = 'discard-tile';
@@ -228,15 +234,16 @@ function buildDiscardZone(state: GameState, pos: Position): HTMLElement {
 }
 
 // ─── CPU手牌 (裏向き) ────────────────────────────────
-function buildCpuHand(state: GameState, pos: Position): HTMLElement {
+// actualPos: データアクセス用実座席, visualPos: CSS/画像パス用視覚位置
+function buildCpuHand(state: GameState, actualPos: Position, visualPos: Position): HTMLElement {
   const handEl = document.createElement('div');
-  handEl.className = `hand hand--${pos}`;
-  if (state.phase === 'cpuTurn' && state.currentTurn === pos) {
+  handEl.className = `hand hand--${visualPos}`;
+  if (state.currentTurn === actualPos) {
     handEl.classList.add('hand--active');
   }
 
-  const count = state.players[pos].hand.length;
-  const backSrc = getBackImagePath(pos);
+  const count = state.players[actualPos].hand.length;
+  const backSrc = getBackImagePath(visualPos);
 
   for (let i = 0; i < count; i++) {
     const img = document.createElement('img');
