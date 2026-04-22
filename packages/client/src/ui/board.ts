@@ -44,7 +44,7 @@ function buildBoard(
   board.className = 'board';
 
   // スコアパネル (常時表示)
-  board.appendChild(buildScorePanel(state));
+  board.appendChild(buildScorePanel(state, myPosition));
 
   // 座席マッピング: 画面上の見た目位置 → 実際の座席
   // selfPos=自分, simoPos=右(下家), toimenPos=上(対面), kamiPos=左(上家)
@@ -73,7 +73,7 @@ function buildBoard(
 }
 
 // ─── スコアパネル ────────────────────────────────────
-function buildScorePanel(state: GameState): HTMLElement {
+function buildScorePanel(state: GameState, myPosition: Position | null): HTMLElement {
   const { match } = state;
   const panel = document.createElement('div');
   panel.className = 'score-panel';
@@ -87,19 +87,22 @@ function buildScorePanel(state: GameState): HTMLElement {
   roundEl.textContent = roundLabel + honbaText;
   panel.appendChild(roundEl);
 
-  const positions: { pos: Position; label: string }[] = [
-    { pos: 'player',  label: '自分' },
-    { pos: 'simo',    label: '下家' },
-    { pos: 'toimen',  label: '対面' },
-    { pos: 'kami',    label: '上家' },
+  // myPosition を基準に「自分/下家/対面/上家」のラベルを割り当てる
+  const selfPos = myPosition ?? 'player';
+  const selfIdx = TURN_ORDER.indexOf(selfPos);
+  const displayPositions: { pos: Position; label: string }[] = [
+    { pos: TURN_ORDER[(selfIdx + 0) % 4], label: '自分' },
+    { pos: TURN_ORDER[(selfIdx + 1) % 4], label: '下家' },
+    { pos: TURN_ORDER[(selfIdx + 2) % 4], label: '対面' },
+    { pos: TURN_ORDER[(selfIdx + 3) % 4], label: '上家' },
   ];
 
   const scoreList = document.createElement('div');
   scoreList.className = 'score-list';
 
-  for (const { pos, label } of positions) {
+  for (const { pos, label } of displayPositions) {
     const entry = document.createElement('div');
-    entry.className = 'score-entry' + (pos === parent ? ' score-entry--parent' : '');
+    entry.className = 'score-entry' + (pos === selfPos ? ' score-entry--parent' : '');
 
     const nameEl = document.createElement('span');
     nameEl.className = 'score-name';
