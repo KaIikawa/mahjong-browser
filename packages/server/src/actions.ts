@@ -39,7 +39,7 @@ function drawForPlayer(state: GameState, pos: Position): GameState {
 
 // ─── ゲーム初期化 ─────────────────────────────────────
 // オンライン版: 全プレイヤーの手牌を理牌してから配布する
-export function initGameState(match?: MatchState): GameState {
+export function initGameState(match?: MatchState, playerNames?: Map<Position, string>): GameState {
   const currentMatch = match ?? initMatchState();
   const deck = shuffleDeck(createDeck());
   let idx = 0;
@@ -59,6 +59,12 @@ export function initGameState(match?: MatchState): GameState {
   const drawnTile = wall.shift()!;
   const doraTile = wall.pop()!;
   const riichi: GameState['riichi'] = { player: false, simo: false, toimen: false, kami: false };
+  const names: GameState['playerNames'] = {
+    player: playerNames?.get('player') ?? 'Player',
+    simo:   playerNames?.get('simo')   ?? 'Simo',
+    toimen: playerNames?.get('toimen') ?? 'Toimen',
+    kami:   playerNames?.get('kami')   ?? 'Kami',
+  };
 
   return {
     wall,
@@ -71,6 +77,7 @@ export function initGameState(match?: MatchState): GameState {
     doraTile,
     riichi,
     match: currentMatch,
+    playerNames: names,
   };
 }
 

@@ -107,7 +107,8 @@ function buildScorePanel(state: GameState, myPosition: Position | null): HTMLEle
     const nameEl = document.createElement('span');
     nameEl.className = 'score-name';
     const wind = getSelfWind(pos, match.round);
-    nameEl.textContent = `${label}(${wind}${pos === parent ? '・親' : ''})`;
+    const pName = state.playerNames?.[pos] ?? label;
+    nameEl.textContent = `${pName}(${wind}${pos === parent ? '・親' : ''})`;
     entry.appendChild(nameEl);
 
     const scoreEl = document.createElement('span');

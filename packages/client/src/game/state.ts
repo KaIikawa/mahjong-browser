@@ -49,6 +49,7 @@ export function initGameState(match?: MatchState): GameState {
     doraTile,
     riichi,
     match: currentMatch,
+    playerNames: { player: 'あなた', simo: 'CPU南', toimen: 'CPU西', kami: 'CPU北' },
   };
 }
 

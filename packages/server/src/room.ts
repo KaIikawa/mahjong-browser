@@ -7,7 +7,7 @@
  */
 import { WebSocket } from 'ws';
 import type { Position, GameState, MatchState } from '@mahjong/shared';
-import { TURN_ORDER, initMatchState, applyRoundResult } from '@mahjong/shared';
+import { TURN_ORDER, initMatchState, applyRoundResult, getParent, isTenpai } from '@mahjong/shared';
 import type { C2SMessage, S2CMessage } from '@mahjong/shared';
 import {
   initGameState,
@@ -94,11 +94,11 @@ export function handleJoin(
   console.log(`[${roomId}] ${playerName} joined as ${pos} (${room.clients.size}/4)`);
 
   // 4 人揃ったらゲーム開始
-  if (room.clients.size === 4) {
-    room.state = initGameState(room.match);
-    broadcast(room, { type: 'update', state: room.state });
-    console.log(`[${roomId}] Game started`);
-  }
+    if (room.clients.size === 4) {
+      room.state = initGameState(room.match, room.playerNames);
+      broadcast(room, { type: 'update', state: room.state });
+      console.log(`[${roomId}] Game started`);
+    }
 }
 
 // ─── エントリポイント: 各種ゲームアクション ───────────────
@@ -128,19 +128,23 @@ export function handleMessage(ws: WebSocket, msg: C2SMessage): void {
       break;
     case 'nextRound': {
       if (newState.phase !== 'agari' && newState.phase !== 'ryukyoku') return;
-      const newMatch = applyRoundResult(room.state.match, room.state.agariInfo);
+      const parent = getParent(room.state.match.round);
+      const parentIsTenpai =
+        room.state.phase === 'ryukyoku' &&
+        isTenpai(room.state.players[parent].hand);
+      const newMatch = applyRoundResult(room.state.match, room.state.agariInfo, parentIsTenpai);
       if (newMatch.finished) {
         // 半荘終了: スコアのみ更新して終了フラグを伝える
         newState = { ...room.state, match: newMatch };
       } else {
         room.match = newMatch;
-        newState = initGameState(room.match);
+        newState = initGameState(room.match, room.playerNames);
       }
       break;
     }
     case 'restart': {
       room.match = initMatchState();
-      newState = initGameState(room.match);
+      newState = initGameState(room.match, room.playerNames);
       break;
     }
     default:

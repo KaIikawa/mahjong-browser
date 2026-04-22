@@ -90,4 +90,5 @@ export interface GameState {
   doraTile: Tile;                       // ドラ表示牌 (公開)
   riichi: Record<Position, boolean>;   // リーチ状態
   match: MatchState;                    // 対局状態
+  playerNames: Record<Position, string>; // プレイヤー名
 }

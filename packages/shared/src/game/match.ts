@@ -1,13 +1,15 @@
 /**
  * 半荘進行ロジック
  *
- * applyRoundResult(match, agariInfo | null) → MatchState
+ * applyRoundResult(match, agariInfo, parentIsTenpai) → MatchState
  *
  * ルール:
  *   - 和了: 獲得点数を winner に加算、放銃/ツモ払いで他家から減算
  *   - 流局: 点数変動なし、本場+1
  *   - 親が和了 → 連荘 (round 変わらず、honba+1)
- *   - 子が和了 or 流局 → 次の局 (round+1、honba=0)
+ *   - 親がテンパイ流局 → 連荘 (round 変わらず、honba+1)
+ *   - 親がノーテン流局 → 次の局 (round+1、honba=0)
+ *   - 子が和了 → 次の局 (round+1、honba=0)
  *   - round が 8 以上 → 半荘終了
  *   - 持ち点が 0 以下になったプレイヤーがいる → 半荘終了 (飛び)
  */
@@ -25,9 +27,11 @@ export function getParent(round: number): Position {
 
 // ─── 局結果を適用して次の MatchState を返す ─────────────
 // agariInfo === null の場合は流局
+// parentIsTenpai: 流局時の親テンパイ有無 (和了時は無視)
 export function applyRoundResult(
   match: MatchState,
   agariInfo: AgariInfo | null,
+  parentIsTenpai = false,
 ): MatchState {
   const newScores = { ...match.scores };
 
@@ -53,9 +57,11 @@ export function applyRoundResult(
 
   // 次の局判定
   const parent = getParent(match.round);
-  const isRenjan = agariInfo !== null && agariInfo.winner === parent; // 親が和了 → 連荘
-  const newHonba  = isRenjan || agariInfo === null ? match.honba + 1 : 0;
-  const newRound  = isRenjan || agariInfo === null ? match.round : match.round + 1;
+  const isRenjan =
+    (agariInfo !== null && agariInfo.winner === parent) || // 親が和了
+    (agariInfo === null && parentIsTenpai);                // 親テンパイ流局
+  const newHonba  = isRenjan ? match.honba + 1 : 0;
+  const newRound  = isRenjan ? match.round : match.round + 1;
 
   // 半荘終了判定: 8局超過 or 誰かが飛び (点数 ≤ 0)
   const finished = newRound >= 8 || Object.values(newScores).some(s => s <= 0);
