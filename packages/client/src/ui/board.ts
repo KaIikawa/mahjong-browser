@@ -1,5 +1,5 @@
 import type { GameState, Position, Tile } from '@mahjong/shared';
-import { ROUND_LABELS } from '@mahjong/shared';
+import { ROUND_LABELS, TURN_ORDER } from '@mahjong/shared';
 import { getTileImagePath, getDiscardImagePath, getBackImagePath, getTileLabel } from '@mahjong/shared';
 import { selectTile, discardTile, declareTsumo, declareRiichi } from '../game/state';
 import { calcShanten, isAgari } from '@mahjong/shared';
@@ -10,6 +10,13 @@ import { sendAction } from '../main';
 
 type UpdateFn  = (s: GameState) => void;
 type RestartFn = () => void;
+
+// ─── 自風を返す ('東'|'南'|'西'|'北') ───────────────────
+function getSelfWind(pos: Position, round: number): string {
+  const parentIdx = TURN_ORDER.indexOf(getParent(round));
+  const posIdx    = TURN_ORDER.indexOf(pos);
+  return ['東', '南', '西', '北'][(posIdx - parentIdx + 4) % 4];
+}
 type NextRoundFn = (s: GameState) => void;
 
 // ─── メインレンダラー ────────────────────────────────────
@@ -87,7 +94,8 @@ function buildScorePanel(state: GameState): HTMLElement {
 
     const nameEl = document.createElement('span');
     nameEl.className = 'score-name';
-    nameEl.textContent = label + (pos === parent ? '(親)' : '');
+    const wind = getSelfWind(pos, match.round);
+    nameEl.textContent = `${label}(${wind}${pos === parent ? '・親' : ''})`;
     entry.appendChild(nameEl);
 
     const scoreEl = document.createElement('span');
