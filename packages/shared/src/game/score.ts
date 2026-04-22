@@ -47,6 +47,7 @@ function calcFu(hand14: Tile[], isTsumo: boolean): number {
 
 // 満貫以上の固定点 (子の受け取り点)
 function manganScore(han: number): number {
+  if (han >= 26) return 64000; // ダブル役満
   if (han >= 13) return 32000; // 数え役満
   if (han >= 11) return 24000; // 三倍満
   if (han >= 8)  return 16000; // 倍満
@@ -56,6 +57,7 @@ function manganScore(han: number): number {
 
 // 親の満貫以上 (受け取り点)
 function manganScoreParent(han: number): number {
+  if (han >= 26) return 96000; // ダブル役満
   if (han >= 13) return 48000;
   if (han >= 11) return 36000;
   if (han >= 8)  return 24000;
