@@ -1,7 +1,7 @@
 import type { GameState, Position, Tile, MatchState } from '@mahjong/shared';
 import { TURN_ORDER, initMatchState } from '@mahjong/shared';
 import { createDeck, shuffleDeck, sortHand } from '@mahjong/shared';
-import { isAgari, isTenpai } from '@mahjong/shared';
+import { calcShanten, isAgari, isTenpai } from '@mahjong/shared';
 import { detectYaku, hasValidYaku } from '@mahjong/shared';
 import { calcScore } from '@mahjong/shared';
 import { getParent } from '@mahjong/shared';
@@ -325,4 +325,58 @@ export function declareRon(state: GameState): GameState {
 export function cancelRon(state: GameState): GameState {
   if (state.phase !== 'waitingRon' || !state.waitingRon) return state;
   return nextState({ ...state, waitingRon: null }, state.currentTurn);
+}
+
+// ─── [デバッグ用] 指定シャンテン数の配牌で初期化 ────────
+// targetShanten: 0=聴牌, 1=1向聴, 2=2向聴, -1=ランダム(制約なし)
+// 条件を満たす手牌が生成されるまで最大100回リトライする
+export function initGameStateWithShanten(targetShanten: number, match?: MatchState): GameState {
+  if (targetShanten < 0) return initGameState(match);
+  for (let i = 0; i < 100; i++) {
+    const state = initGameState(match);
+    if (calcShanten(state.players['player'].hand) === targetShanten) return state;
+  }
+  return initGameState(match);
+}
+
+// ─── [デバッグ用] 指定手牌で初期化 ─────────────────────
+// hand: プレイヤーの初期手牌 (13枚)。残りは山から配布される
+export function initGameStateWithHand(hand: Tile[], match?: MatchState): GameState {
+  const currentMatch = match ?? initMatchState();
+  const handUids = new Set(hand.map(t => t.uid));
+
+  // 指定手牌を除いた残りのデッキをシャッフル
+  const remaining = shuffleDeck(createDeck().filter(t => !handUids.has(t.uid)));
+  let idx = 0;
+
+  const parentPos = getParent(currentMatch.round);
+  const players = {} as GameState['players'];
+  for (const pos of TURN_ORDER) {
+    if (pos === 'player') {
+      players[pos] = { position: pos, hand: sortHand([...hand]), discards: [] };
+    } else {
+      players[pos] = { position: pos, hand: remaining.slice(idx, idx + 13), discards: [] };
+      idx += 13;
+    }
+  }
+
+  const wall = remaining.slice(idx);
+  const drawnTile = wall.shift()!;
+  const doraTile = wall.pop()!;
+  const riichi: GameState['riichi'] = { player: false, simo: false, toimen: false, kami: false };
+
+  return {
+    wall,
+    players,
+    drawnTile,
+    selectedIndex: null,
+    phase: parentPos === 'player' ? 'playerTurn' : 'cpuTurn',
+    currentTurn: parentPos,
+    agariInfo: null,
+    doraTile,
+    riichi,
+    match: currentMatch,
+    playerNames: { player: 'あなた', simo: 'CPU南', toimen: 'CPU西', kami: 'CPU北' },
+    waitingRon: null,
+  };
 }

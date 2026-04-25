@@ -1,6 +1,7 @@
 import './style.css';
 import { initGameState, cpuDrawAndDiscard } from './game/state';
 import { renderBoard } from './ui/board';
+import { renderBoardDebug } from './ui/board-debug';
 import { renderLobby, renderWaiting, renderConnectionError } from './ui/lobby';
 import { WsClient } from './net/wsClient';
 import { applyRoundResult } from '@mahjong/shared';
@@ -11,12 +12,25 @@ import type { GameState, Position } from '@mahjong/shared';
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3000';
 const CPU_DELAY = 600;
 
+// ─── デバッグモード: URL ハッシュ #debug でのみ有効 ──────
+const isDebugMode = window.location.hash === '#debug';
+
 // ─── 状態 ──────────────────────────────────────────
 let gameState: GameState = initGameState();
 let cpuTimer: ReturnType<typeof setTimeout> | null = null;
 let wsClient: WsClient | null = null;
 let myPosition: Position | null = null;   // オンラインモード時の自座席
 let isOnline = false;
+
+// ─── ボード描画 (通常/デバッグを一元管理) ───────────────
+function renderCurrentBoard(): void {
+  const updateFn = isOnline ? onlineUpdate : update;
+  if (isDebugMode) {
+    renderBoardDebug(gameState, updateFn, restart, nextRound, debugRestart, myPosition);
+  } else {
+    renderBoard(gameState, updateFn, restart, nextRound, myPosition);
+  }
+}
 
 // ─── オフラインモード ────────────────────────────────
 
@@ -26,7 +40,7 @@ function clearCpuTimer(): void {
 
 function update(newState: GameState): void {
   gameState = newState;
-  renderBoard(gameState, isOnline ? onlineUpdate : update, restart, nextRound, myPosition);
+  renderCurrentBoard();
   if (!isOnline) scheduleCpuIfNeeded();
 }
 
@@ -70,11 +84,17 @@ function restart(): void {
 // 牌の選択など「ローカルのみ」の状態変化もここで再レンダリングする
 function onlineUpdate(newState: GameState): void {
   gameState = newState;
-  renderBoard(gameState, onlineUpdate, restart, nextRound, myPosition);
+  renderCurrentBoard();
 }
 
 export function sendAction(msg: Parameters<WsClient['send']>[0]): void {
   wsClient?.send(msg);
+}
+
+// ─── [デバッグ用] 任意の GameState で再スタート ──────────
+function debugRestart(newState: GameState): void {
+  clearCpuTimer();
+  update(newState);
 }
 
 function startOnline(playerName: string, roomId: string): void {
@@ -90,7 +110,7 @@ function startOnline(playerName: string, roomId: string): void {
     },
     onStateUpdate: (state) => {
       gameState = state;
-      renderBoard(gameState, onlineUpdate, restart, nextRound, myPosition);
+      renderCurrentBoard();
     },
     onError: (message) => {
       renderConnectionError(message, () => {
@@ -129,4 +149,13 @@ function showLobby(): void {
 }
 
 // ─── 初期化 ──────────────────────────────────────────
-showLobby();
+if (isDebugMode) {
+  // デバッグモード時はロビーをスキップして即ゲーム開始
+  const banner = document.createElement('div');
+  banner.className = 'debug-mode-banner';
+  banner.textContent = '🔧 DEBUG MODE — 開発者専用画面';
+  document.body.insertBefore(banner, document.getElementById('app'));
+  update(initGameState(initMatchState()));
+} else {
+  showLobby();
+}
