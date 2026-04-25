@@ -102,13 +102,17 @@ function buildScorePanel(state: GameState, myPosition: Position | null): HTMLEle
 
   for (const { pos, label } of displayPositions) {
     const entry = document.createElement('div');
-    entry.className = 'score-entry' + (pos === selfPos ? ' score-entry--parent' : '');
+    const isActive = pos === state.currentTurn &&
+      (state.phase === 'playerTurn' || state.phase === 'cpuTurn');
+    entry.className = 'score-entry'
+      + (pos === selfPos ? ' score-entry--self' : '')
+      + (isActive ? ' score-entry--active' : '');
 
     const nameEl = document.createElement('span');
     nameEl.className = 'score-name';
     const wind = getSelfWind(pos, match.round);
     const pName = state.playerNames?.[pos] ?? label;
-    nameEl.textContent = `${pName}(${wind}${pos === parent ? '・親' : ''})`;
+    nameEl.textContent = (isActive ? '▶ ' : '') + `${pName}(${wind}${pos === parent ? '・親' : ''})`;
     entry.appendChild(nameEl);
 
     const scoreEl = document.createElement('span');
@@ -126,7 +130,9 @@ function buildScorePanel(state: GameState, myPosition: Position | null): HTMLEle
 // ─── 対面/上家/下家エリア (手牌のみ) ─────────────────────
 function buildOpponentArea(state: GameState, actualPos: Position, visualPos: 'toimen' | 'kami' | 'simo'): HTMLElement {
   const area = document.createElement('div');
-  area.className = `area area--${visualPos}`;
+  const isActive = state.currentTurn === actualPos &&
+    (state.phase === 'playerTurn' || state.phase === 'cpuTurn');
+  area.className = `area area--${visualPos}` + (isActive ? ' area--active' : '');
 
   const labels: Record<string, string> = { toimen: '対面', kami: '上家', simo: '下家' };
   area.appendChild(buildLabel(labels[visualPos]));
@@ -202,15 +208,15 @@ function buildWallInfo(state: GameState): HTMLElement {
 
   const msg = document.createElement('div');
   msg.className = 'phase-msg';
-  if (state.phase === 'playerTurn') {
-    const labels: Record<string, string> = { player: '自分', simo: '下家', toimen: '対面', kami: '上家' };
-    msg.textContent = `${labels[state.currentTurn] ?? ''}の番`;
-  } else if (state.phase === 'cpuTurn') {
-    const labels: Record<string, string> = { simo: '下家', toimen: '対面', kami: '上家' };
-    msg.textContent = `${labels[state.currentTurn] ?? ''}の番`;
+  const posLabels: Record<string, string> = { player: '自分', simo: '下家', toimen: '対面', kami: '上家' };
+  if (state.phase === 'playerTurn' || state.phase === 'cpuTurn') {
+    const turnName = state.playerNames?.[state.currentTurn] ?? posLabels[state.currentTurn] ?? '';
+    msg.textContent = `${turnName} の番`;
+    msg.classList.add('phase-msg--active');
   } else if (state.phase === 'agari') {
-    const winnerLabels: Record<string, string> = { player: '自分', simo: '下家', toimen: '対面', kami: '上家' };
-    msg.textContent = `${winnerLabels[state.agariInfo!.winner]}の和了！`;
+    const winnerName = state.playerNames?.[state.agariInfo!.winner] ?? posLabels[state.agariInfo!.winner];
+    msg.textContent = `${winnerName} の和了！`;
+    msg.classList.add('phase-msg--agari');
   } else if (state.phase === 'ryukyoku') {
     msg.textContent = '流局';
   } else if (state.phase === 'waitingRon') {
@@ -329,13 +335,12 @@ function buildPlayerArea(
   myPosition: Position | null,
 ): HTMLElement {
   const area = document.createElement('div');
-  area.className = 'area area--player';
+  const selfPos: Position = myPosition ?? 'player';
+  const isMyTurn = state.phase === 'playerTurn' && state.currentTurn === selfPos;
+  area.className = 'area area--player' + (isMyTurn ? ' area--active' : '');
 
   // オンライン時は「自分の座席」の手牌を表示する
   // myPosition=null はオフライン (player 固定)
-  const selfPos: Position = myPosition ?? 'player';
-  // 自分の手番かどうか (オンライン時は currentTurn が自座席のみ操作可)
-  const isMyTurn = state.phase === 'playerTurn' && state.currentTurn === selfPos;
   const isOnline = myPosition !== null;
 
   area.appendChild(buildPlayerHand(state, selfPos, isMyTurn, isOnline, onUpdate));
