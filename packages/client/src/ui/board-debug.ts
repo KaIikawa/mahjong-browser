@@ -14,7 +14,11 @@ import type { GameState, Position, Tile, TileKind, HonorKey } from '@mahjong/sha
 import { TURN_ORDER, getTileImagePath, getTileLabel, sortHand } from '@mahjong/shared';
 import { calcShanten } from '@mahjong/shared';
 import { renderBoard } from './board';
-import { initGameStateWithShanten, initGameStateWithHand } from '../game/state';
+import { initGameStateWithShanten, initGameStateWithHand, cpuDrawAndDiscardAt } from '../game/state';
+
+// CPU 操作モード
+export type DebugCpuMode = 'auto-discard' | 'manual' | 'ai';
+type SetCpuModeFn = (mode: DebugCpuMode) => void;
 
 // ─── 役プリセット定義 ─────────────────────────────────────
 interface TileSpec { kind: TileKind; number?: number; honor?: HonorKey; }
@@ -97,11 +101,13 @@ export function renderBoardDebug(
   onRestart: RestartFn,
   onNextRound: NextRoundFn,
   onDebugRestart: DebugRestartFn,
+  cpuMode: DebugCpuMode,
+  setCpuMode: SetCpuModeFn,
   myPosition: Position | null = null,
 ): void {
   renderBoard(state, onUpdate, onRestart, onNextRound, myPosition);
   const app = document.getElementById('app')!;
-  app.appendChild(buildDebugPanel(state, onUpdate, onDebugRestart));
+  app.appendChild(buildDebugPanel(state, onUpdate, onDebugRestart, cpuMode, setCpuMode));
 }
 
 // ─── デバッグパネル全体 ────────────────────────────────
@@ -109,6 +115,8 @@ function buildDebugPanel(
   state: GameState,
   onUpdate: UpdateFn,
   onDebugRestart: DebugRestartFn,
+  cpuMode: DebugCpuMode,
+  setCpuMode: SetCpuModeFn,
 ): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'debug-panel';
@@ -118,11 +126,78 @@ function buildDebugPanel(
   header.textContent = '🔧 DEBUG PANEL';
   panel.appendChild(header);
 
+  panel.appendChild(buildDebugCpuMode(state, onUpdate, cpuMode, setCpuMode));
   panel.appendChild(buildDebugHands(state));
   panel.appendChild(buildDebugWall(state, onUpdate));
   panel.appendChild(buildDebugNewGame(state, onDebugRestart));
 
   return panel;
+}
+
+// ─── CPU 操作モードセレクター + 手動捕作 UI ────────────────
+function buildDebugCpuMode(
+  state: GameState,
+  onUpdate: UpdateFn,
+  cpuMode: DebugCpuMode,
+  setCpuMode: SetCpuModeFn,
+): HTMLElement {
+  const section = buildSection('CPU 操作モード');
+
+  const modeRow = document.createElement('div');
+  modeRow.className = 'debug-btn-row';
+
+  const modes: { mode: DebugCpuMode; label: string }[] = [
+    { mode: 'auto-discard', label: '自動ツモ切り' },
+    { mode: 'manual',       label: '手動操作' },
+    { mode: 'ai',           label: 'AI操作' },
+  ];
+
+  for (const { mode, label } of modes) {
+    const btn = document.createElement('button');
+    btn.className = 'btn debug-btn' + (cpuMode === mode ? ' debug-btn--mode-active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => setCpuMode(mode));
+    modeRow.appendChild(btn);
+  }
+  section.appendChild(modeRow);
+
+  // 手動操作モード且つ cpuTurn の時: 当該 CPU の捕作 UI を表示
+  if (cpuMode === 'manual' && state.phase === 'cpuTurn') {
+    const pos = state.currentTurn;
+    const posLabels: Record<Position, string> = {
+      player: 'あなた', simo: '下家', toimen: '対面', kami: '上家',
+    };
+    const cpuName = state.playerNames?.[pos] ?? posLabels[pos];
+
+    const manualTitle = document.createElement('div');
+    manualTitle.className = 'debug-subtitle';
+    manualTitle.textContent = `${cpuName}の捕作牌を選択 (13枚の手牌 + 次ツモ牌):`;
+    section.appendChild(manualTitle);
+
+    const handRow = document.createElement('div');
+    handRow.className = 'debug-hand-tiles';
+
+    // CPU手牌（13枚）+ 山の次牌（1枚）を理牌順で表示
+    const cpuHand = sortHand([...state.players[pos].hand]);
+    const nextWallTile = state.wall[0];
+    const displayTiles = nextWallTile ? [...cpuHand, nextWallTile] : cpuHand;
+
+    for (const tile of displayTiles) {
+      const img = document.createElement('img');
+      img.src = getTileImagePath(tile);
+      img.alt = getTileLabel(tile);
+      img.draggable = false;
+      img.title = `${getTileLabel(tile)} — この牌を捕てる`;
+      img.className = 'debug-tile debug-tile--wall' + (tile.uid === nextWallTile?.uid ? ' debug-tile--next' : '');
+      img.addEventListener('click', () => {
+        onUpdate(cpuDrawAndDiscardAt(state, tile.uid));
+      });
+      handRow.appendChild(img);
+    }
+    section.appendChild(handRow);
+  }
+
+  return section;
 }
 
 // ─── セクション1: 全プレイヤー手牌（表向き）+ シャンテン数 ─
@@ -145,10 +220,10 @@ function buildDebugHands(state: GameState): HTMLElement {
     const tilesEl = document.createElement('div');
     tilesEl.className = 'debug-hand-tiles';
 
-    const tiles = [...state.players[pos].hand];
-    if (pos === state.currentTurn && state.drawnTile) {
-      tiles.push(state.drawnTile);
-    }
+    // 手牌を理牌順にソートして表示
+    const hand = sortHand([...state.players[pos].hand]);
+    const tsumo = pos === state.currentTurn && state.drawnTile ? [state.drawnTile] : [];
+    const tiles = [...hand, ...tsumo];
 
     for (const tile of tiles) {
       const img = document.createElement('img');
@@ -172,16 +247,20 @@ function buildDebugHands(state: GameState): HTMLElement {
   return section;
 }
 
-// ─── セクション2: 残りツモ山 + 次ツモ牌選択 ─────────────
+// ─── セクション2: 残りツモ山 ───────────────────────────────────
 function buildDebugWall(state: GameState, onUpdate: UpdateFn): HTMLElement {
+  // 現在の手番プレイヤーからプレイヤー(自分)の次ツモまで何枚消費されるか計算
+  // playerTurn なら山[0]を自分の次ツモに設定する (drawnTileはすでに設定済みのため swap)
+  // cpuTurn なら CPU の次数分の後持に自分のツモが発生する
+
+  const playerDrawOffset = calcPlayerDrawOffset(state);
   const section = buildSection(
-    `残りツモ山 (${state.wall.length}枚) — 牌をクリックで次ツモに移動`,
+    `残りツモ山 (${state.wall.length}枚) — 牌をクリックで「自分の次ツモ」に指定 (現在の位置: wall[${playerDrawOffset}])`,
   );
 
   const wallGrid = document.createElement('div');
   wallGrid.className = 'debug-wall-grid';
 
-  // 表示は理牌順に並べるが、クリック時はオリジナルの wall 配列インデックスで操作する
   const sorted = sortHand([...state.wall]);
   sorted.forEach((tile) => {
     const origIdx = state.wall.findIndex(t => t.uid === tile.uid);
@@ -189,20 +268,58 @@ function buildDebugWall(state: GameState, onUpdate: UpdateFn): HTMLElement {
     img.src = getTileImagePath(tile);
     img.alt = getTileLabel(tile);
     img.draggable = false;
-    img.title = `${getTileLabel(tile)} — クリックで次ツモに設定`;
+    img.title = `${getTileLabel(tile)} — クリックで自分の次ツモに指定`;
+    // 現在自分の次ツモ位置をハイライト
     img.className =
-      'debug-tile debug-tile--wall' + (origIdx === 0 ? ' debug-tile--next' : '');
+      'debug-tile debug-tile--wall' + (origIdx === playerDrawOffset ? ' debug-tile--next' : '');
     img.addEventListener('click', () => {
-      const newWall = [...state.wall];
-      newWall.splice(origIdx, 1);
-      newWall.unshift(tile);
-      onUpdate({ ...state, wall: newWall });
+      onUpdate(setPlayerNextDraw(state, tile));
     });
     wallGrid.appendChild(img);
   });
 
+  // playerTurn且つ drawnTile ありの場合は置換対象の説明を追加
+  if (state.phase === 'playerTurn' && state.drawnTile) {
+    const note = document.createElement('div');
+    note.className = 'debug-subtitle';
+    note.textContent = `※ 自分はすでにツモ済み (${getTileLabel(state.drawnTile)})。クリックするとそのツモ牌と入れ替えます。`;
+    section.appendChild(note);
+  }
+
   section.appendChild(wallGrid);
   return section;
+}
+
+// 自分 ('player') の次ツモ位置 (wall[何番目]) を返す
+function calcPlayerDrawOffset(state: GameState): number {
+  if (state.phase !== 'cpuTurn') return 0;
+  let offset = 0;
+  let cur = TURN_ORDER.indexOf(state.currentTurn);
+  while (TURN_ORDER[cur % 4] !== 'player') {
+    offset++;
+    cur++;
+  }
+  return offset;
+}
+
+// 指定牌を自分の次ツモに設定する
+function setPlayerNextDraw(state: GameState, tile: Tile): GameState {
+  const idx = state.wall.findIndex(t => t.uid === tile.uid);
+  if (idx === -1) return state;
+
+  // playerTurn 且つ drawnTile あり → drawnTile と入れ替え
+  if (state.phase === 'playerTurn' && state.drawnTile) {
+    const newWall = [...state.wall];
+    newWall.splice(idx, 1, state.drawnTile); // 古い drawnTile を山の同位置に戻す
+    return { ...state, drawnTile: tile, wall: newWall };
+  }
+
+  // cpuTurn → 自分のツモ位置まで移動
+  const offset = calcPlayerDrawOffset(state);
+  const newWall = [...state.wall];
+  newWall.splice(idx, 1);
+  newWall.splice(offset, 0, tile);
+  return { ...state, wall: newWall };
 }
 
 // ─── セクション3: カスタム配牌 ───────────────────────────

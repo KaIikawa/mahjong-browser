@@ -2,19 +2,31 @@ import './style.css';
 import { initGameState, cpuDrawAndDiscard } from './game/state';
 import { renderBoard } from './ui/board';
 import { renderBoardDebug } from './ui/board-debug';
+import type { DebugCpuMode } from './ui/board-debug';
 import { renderLobby, renderWaiting, renderConnectionError } from './ui/lobby';
 import { WsClient } from './net/wsClient';
 import { applyRoundResult } from '@mahjong/shared';
 import { initMatchState } from '@mahjong/shared';
 import type { GameState, Position } from '@mahjong/shared';
 
-// ─── 設定 ──────────────────────────────────────────
+// ─── 設定 ──────────────────────────────────────────────────
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3000';
 const CPU_DELAY = 600;
 
-// ─── デバッグモード: 開発環境かつ URL ハッシュ #debug でのみ有効 ──
+// ─── デバッグモード: 開発環境かつ URL ハッシュ #debug でのみ有効 ────
 // 本番ビルド時は import.meta.env.DEV が false に置換されるため常に無効
 const isDebugMode = import.meta.env.DEV && window.location.hash === '#debug';
+
+// ─── CPU 操作モード (デバッグ時のみ使用) ────────────────────
+let debugCpuMode: DebugCpuMode = 'auto-discard';
+
+export function getDebugCpuMode(): DebugCpuMode { return debugCpuMode; }
+export function setDebugCpuMode(mode: DebugCpuMode): void {
+  debugCpuMode = mode;
+  // 手動モードから自動モードに切り替えた場合、保留中のターンを再開倒す
+  if (mode !== 'manual') scheduleCpuIfNeeded();
+  renderCurrentBoard();
+}
 
 // ─── 状態 ──────────────────────────────────────────
 let gameState: GameState = initGameState();
@@ -27,7 +39,10 @@ let isOnline = false;
 function renderCurrentBoard(): void {
   const updateFn = isOnline ? onlineUpdate : update;
   if (isDebugMode) {
-    renderBoardDebug(gameState, updateFn, restart, nextRound, debugRestart, myPosition);
+    renderBoardDebug(
+      gameState, updateFn, restart, nextRound, debugRestart,
+      debugCpuMode, setDebugCpuMode, myPosition,
+    );
   } else {
     renderBoard(gameState, updateFn, restart, nextRound, myPosition);
   }
@@ -48,6 +63,8 @@ function update(newState: GameState): void {
 function scheduleCpuIfNeeded(): void {
   clearCpuTimer();
   if (gameState.phase === 'cpuTurn') {
+    // デバッグ手動モード時は CPU 自動実行しない
+    if (isDebugMode && debugCpuMode === 'manual') return;
     cpuTimer = setTimeout(() => {
       cpuTimer = null;
       update(cpuDrawAndDiscard(gameState));

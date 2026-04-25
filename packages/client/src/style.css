@@ -910,6 +910,20 @@ h1 {
   background: #1d4ed8;
 }
 
+.debug-btn--mode-active {
+  background: #5b21b6;
+  border-color: #a78bfa;
+  color: #ede9fe;
+  font-weight: 700;
+}
+
+.debug-subtitle {
+  font-size: 11px;
+  color: #c4b5fd;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
 .debug-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

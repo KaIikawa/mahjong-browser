@@ -339,6 +339,88 @@ export function initGameStateWithShanten(targetShanten: number, match?: MatchSta
   return initGameState(match);
 }
 
+// ─── [デバッグ用] CPU が指定UID の牌を捨てる ───────────
+// cpuDrawAndDiscard と同じ流れだが、ランダム捨てを discardUid 指定に変える
+// discardUid が -1 または見つからない場合はランダム捨て
+export function cpuDrawAndDiscardAt(state: GameState, discardUid: number): GameState {
+  if (state.phase !== 'cpuTurn') return state;
+
+  const pos = state.currentTurn;
+
+  if (state.wall.length === 0) {
+    return { ...state, phase: 'ryukyoku', drawnTile: null };
+  }
+
+  const [drawn, ...restWall] = state.wall;
+  const cpuPlayer = state.players[pos];
+
+  // ツモ和了チェック
+  const cpuFullHand = [...cpuPlayer.hand, drawn];
+  if (isAgari(cpuFullHand)) {
+    const isParent = getParent(state.match.round) === pos;
+    const yakuList  = detectYaku(cpuFullHand, true, false, state.doraTile, pos);
+    const scoreResult = calcScore(yakuList, cpuFullHand, true, isParent);
+    return {
+      ...state,
+      wall: restWall,
+      phase: 'agari',
+      agariInfo: {
+        winner: pos,
+        tile: drawn,
+        isTsumo: true,
+        yakuList,
+        han: scoreResult.han,
+        fu: scoreResult.fu,
+        score: scoreResult.score,
+        scoreDetail: scoreResult.scoreDetail,
+      },
+    };
+  }
+
+  // 指定 UID の牌を捨てる (見つからなければランダム)
+  const fullHand = cpuFullHand; // 14枚
+  const specifiedIdx = discardUid >= 0 ? fullHand.findIndex(t => t.uid === discardUid) : -1;
+  const discardIdx = specifiedIdx >= 0 ? specifiedIdx : Math.floor(Math.random() * fullHand.length);
+  const discarded = fullHand[discardIdx];
+  const newHand = fullHand.filter((_, i) => i !== discardIdx);
+
+  const newPlayers: GameState['players'] = {
+    ...state.players,
+    [pos]: {
+      ...cpuPlayer,
+      hand: newHand,
+      discards: [...cpuPlayer.discards, discarded],
+    },
+  };
+
+  const afterDiscard: GameState = {
+    ...state,
+    players: newPlayers,
+    wall: restWall,
+    drawnTile: null,
+    selectedIndex: null,
+  };
+
+  // プレイヤーのロン確認
+  const playerHand = state.players['player'].hand;
+  const playerFullHand = [...playerHand, discarded];
+  if (isAgari(playerFullHand)) {
+    const isRiichi = state.riichi['player'];
+    const yakuList = detectYaku(playerFullHand, false, isRiichi, state.doraTile, 'player');
+    if (hasValidYaku(yakuList)) {
+      const nextPos = nextTurn(pos);
+      return {
+        ...afterDiscard,
+        phase: 'waitingRon',
+        waitingRon: { discarder: pos, tile: discarded, candidates: ['player'] },
+        currentTurn: nextPos,
+      };
+    }
+  }
+
+  return nextState(afterDiscard, nextTurn(pos));
+}
+
 // ─── [デバッグ用] 指定手牌で初期化 ─────────────────────
 // hand: プレイヤーの初期手牌 (13枚)。残りは山から配布される
 export function initGameStateWithHand(hand: Tile[], match?: MatchState): GameState {
