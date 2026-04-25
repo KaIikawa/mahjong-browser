@@ -900,6 +900,16 @@ h1 {
   background: #047857;
 }
 
+.debug-btn--yaku {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+  color: #bfdbfe;
+}
+
+.debug-btn--yaku:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
 .debug-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

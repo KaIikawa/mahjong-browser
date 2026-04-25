@@ -10,11 +10,80 @@
  * 3. 新規配牌: ランダム / シャンテン数指定 / 手牌直接指定
  */
 
-import type { GameState, Position, Tile } from '@mahjong/shared';
-import { TURN_ORDER, getTileImagePath, getTileLabel } from '@mahjong/shared';
+import type { GameState, Position, Tile, TileKind, HonorKey } from '@mahjong/shared';
+import { TURN_ORDER, getTileImagePath, getTileLabel, sortHand } from '@mahjong/shared';
 import { calcShanten } from '@mahjong/shared';
 import { renderBoard } from './board';
 import { initGameStateWithShanten, initGameStateWithHand } from '../game/state';
+
+// ─── 役プリセット定義 ─────────────────────────────────────
+interface TileSpec { kind: TileKind; number?: number; honor?: HonorKey; }
+
+const YAKU_PRESETS: { label: string; tiles: TileSpec[] }[] = [
+  {
+    label: '平和',
+    // 1m2m3m 4m5m6m 2p3p 5p6p7p 9p9p  待ち: 1p or 4p (両面)
+    tiles: [
+      { kind: 'manzu', number: 1 }, { kind: 'manzu', number: 2 }, { kind: 'manzu', number: 3 },
+      { kind: 'manzu', number: 4 }, { kind: 'manzu', number: 5 }, { kind: 'manzu', number: 6 },
+      { kind: 'pinzu', number: 2 }, { kind: 'pinzu', number: 3 },
+      { kind: 'pinzu', number: 5 }, { kind: 'pinzu', number: 6 }, { kind: 'pinzu', number: 7 },
+      { kind: 'pinzu', number: 9 }, { kind: 'pinzu', number: 9 },
+    ],
+  },
+  {
+    label: '一盃口',
+    // 1m2m3m 1m2m3m 4m5m 7p8p9p 1s1s  待ち: 3m or 6m (両面)
+    tiles: [
+      { kind: 'manzu', number: 1 }, { kind: 'manzu', number: 2 }, { kind: 'manzu', number: 3 },
+      { kind: 'manzu', number: 1 }, { kind: 'manzu', number: 2 }, { kind: 'manzu', number: 3 },
+      { kind: 'manzu', number: 4 }, { kind: 'manzu', number: 5 },
+      { kind: 'pinzu', number: 7 }, { kind: 'pinzu', number: 8 }, { kind: 'pinzu', number: 9 },
+      { kind: 'sozu', number: 1 }, { kind: 'sozu', number: 1 },
+    ],
+  },
+  {
+    label: 'ホンイツ',
+    // 1m2m3m 5m6m7m 8m9m 東東東 発発  待ち: 4m or 7m (両面)
+    tiles: [
+      { kind: 'manzu', number: 1 }, { kind: 'manzu', number: 2 }, { kind: 'manzu', number: 3 },
+      { kind: 'manzu', number: 5 }, { kind: 'manzu', number: 6 }, { kind: 'manzu', number: 7 },
+      { kind: 'manzu', number: 8 }, { kind: 'manzu', number: 9 },
+      { kind: 'tupai', honor: 'e' }, { kind: 'tupai', honor: 'e' }, { kind: 'tupai', honor: 'e' },
+      { kind: 'tupai', honor: 'no' }, { kind: 'tupai', honor: 'no' },
+    ],
+  },
+  {
+    label: 'タンヤオ',
+    // 2m3m4m 5m6m 2p3p4p 5p6p7p 8s8s  待ち: 4m or 7m (両面)
+    tiles: [
+      { kind: 'manzu', number: 2 }, { kind: 'manzu', number: 3 }, { kind: 'manzu', number: 4 },
+      { kind: 'manzu', number: 5 }, { kind: 'manzu', number: 6 },
+      { kind: 'pinzu', number: 2 }, { kind: 'pinzu', number: 3 }, { kind: 'pinzu', number: 4 },
+      { kind: 'pinzu', number: 5 }, { kind: 'pinzu', number: 6 }, { kind: 'pinzu', number: 7 },
+      { kind: 'sozu', number: 8 }, { kind: 'sozu', number: 8 },
+    ],
+  },
+];
+
+// spec に合う未使用の牌を pool から探す
+function findTilesFromPool(specs: TileSpec[], pool: Tile[]): Tile[] | null {
+  const result: Tile[] = [];
+  const usedUids = new Set<number>();
+  for (const spec of specs) {
+    const found = pool.find(
+      t =>
+        !usedUids.has(t.uid) &&
+        t.kind === spec.kind &&
+        t.number === spec.number &&
+        t.honor === spec.honor,
+    );
+    if (!found) return null;
+    usedUids.add(found.uid);
+    result.push(found);
+  }
+  return result;
+}
 
 type UpdateFn       = (s: GameState) => void;
 type RestartFn      = () => void;
@@ -112,17 +181,20 @@ function buildDebugWall(state: GameState, onUpdate: UpdateFn): HTMLElement {
   const wallGrid = document.createElement('div');
   wallGrid.className = 'debug-wall-grid';
 
-  state.wall.forEach((tile, idx) => {
+  // 表示は理牌順に並べるが、クリック時はオリジナルの wall 配列インデックスで操作する
+  const sorted = sortHand([...state.wall]);
+  sorted.forEach((tile) => {
+    const origIdx = state.wall.findIndex(t => t.uid === tile.uid);
     const img = document.createElement('img');
     img.src = getTileImagePath(tile);
     img.alt = getTileLabel(tile);
     img.draggable = false;
     img.title = `${getTileLabel(tile)} — クリックで次ツモに設定`;
     img.className =
-      'debug-tile debug-tile--wall' + (idx === 0 ? ' debug-tile--next' : '');
+      'debug-tile debug-tile--wall' + (origIdx === 0 ? ' debug-tile--next' : '');
     img.addEventListener('click', () => {
       const newWall = [...state.wall];
-      newWall.splice(idx, 1);
+      newWall.splice(origIdx, 1);
       newWall.unshift(tile);
       onUpdate({ ...state, wall: newWall });
     });
@@ -138,27 +210,32 @@ function buildDebugNewGame(state: GameState, onDebugRestart: DebugRestartFn): HT
   const section = buildSection('新規配牌');
 
   // シャンテン数指定ボタン行
-  const btnRow = document.createElement('div');
-  btnRow.className = 'debug-btn-row';
+  const shantenLabel = document.createElement('div');
+  shantenLabel.className = 'debug-subtitle';
+  shantenLabel.textContent = 'シャンテン数指定';
+  section.appendChild(shantenLabel);
 
-  const presets: { label: string; shanten: number }[] = [
+  const shantenRow = document.createElement('div');
+  shantenRow.className = 'debug-btn-row';
+
+  const shantenPresets: { label: string; shanten: number }[] = [
     { label: 'ランダム',    shanten: -1 },
     { label: '聴牌(0向聴)', shanten: 0  },
     { label: '1向聴',       shanten: 1  },
     { label: '2向聴',       shanten: 2  },
   ];
 
-  for (const { label, shanten } of presets) {
+  for (const { label, shanten } of shantenPresets) {
     const btn = document.createElement('button');
     btn.className = 'btn debug-btn';
     btn.textContent = label;
     btn.addEventListener('click', () => {
       onDebugRestart(initGameStateWithShanten(shanten, state.match));
     });
-    btnRow.appendChild(btn);
+    shantenRow.appendChild(btn);
   }
 
-  section.appendChild(btnRow);
+  section.appendChild(shantenRow);
   section.appendChild(buildHandPicker(state, onDebugRestart));
   return section;
 }
@@ -172,6 +249,16 @@ function buildHandPicker(state: GameState, onDebugRestart: DebugRestartFn): HTML
   subTitle.className = 'debug-subtitle';
   subTitle.textContent = '手牌直接指定 — 13枚選択後に「適用」';
   container.appendChild(subTitle);
+
+  // 役プリセットボタン行
+  const yakuLabel = document.createElement('div');
+  yakuLabel.className = 'debug-subtitle';
+  yakuLabel.textContent = '役プリセット（テンパイ手牌を自動選択）';
+  container.appendChild(yakuLabel);
+
+  const yakuRow = document.createElement('div');
+  yakuRow.className = 'debug-btn-row';
+  container.appendChild(yakuRow);
 
   // 選択済み牌の表示エリア
   const selectedArea = document.createElement('div');
@@ -202,6 +289,38 @@ function buildHandPicker(state: GameState, onDebugRestart: DebugRestartFn): HTML
   // 選択牌の管理
   const selected: Tile[] = [];
 
+  // 役プリセットボタンの生成（selected が確定してから関数参照できるよう後置）
+  const availableForPreset: Tile[] = [
+    ...state.wall,
+    ...TURN_ORDER.flatMap(pos => state.players[pos].hand),
+    ...(state.drawnTile ? [state.drawnTile] : []),
+  ];
+
+  for (const preset of YAKU_PRESETS) {
+    const btn = document.createElement('button');
+    btn.className = 'btn debug-btn debug-btn--yaku';
+    btn.textContent = preset.label;
+    btn.addEventListener('click', () => {
+      const tiles = findTilesFromPool(preset.tiles, availableForPreset);
+      if (!tiles) {
+        btn.textContent = `${preset.label} (牌不足)`;
+        return;
+      }
+      // 既存の選択をリセットしてプリセット牌を選択
+      selected.length = 0;
+      pickerGrid.querySelectorAll('.debug-tile--picker--selected').forEach(el =>
+        el.classList.remove('debug-tile--picker--selected'),
+      );
+      for (const tile of tiles) {
+        selected.push(tile);
+        const el = pickerGrid.querySelector<HTMLImageElement>(`[data-uid="${tile.uid}"]`);
+        el?.classList.add('debug-tile--picker--selected');
+      }
+      refreshSelected();
+    });
+    yakuRow.appendChild(btn);
+  }
+
   function refreshSelected(): void {
     countEl.textContent = `選択済: ${selected.length} / 13`;
     applyBtn.disabled = selected.length !== 13;
@@ -230,12 +349,12 @@ function buildHandPicker(state: GameState, onDebugRestart: DebugRestartFn): HTML
     );
   });
 
-  // ピッカーグリッド: 現在のゲームで未使用の全牌
-  const availableTiles: Tile[] = [
+  // ピッカーグリッド: 現在のゲームで未使用の全牌（理牌順にソート）
+  const availableTiles: Tile[] = sortHand([
     ...state.wall,
     ...TURN_ORDER.flatMap(pos => state.players[pos].hand),
     ...(state.drawnTile ? [state.drawnTile] : []),
-  ];
+  ]);
 
   const pickerGrid = document.createElement('div');
   pickerGrid.className = 'debug-picker-grid';
@@ -245,6 +364,7 @@ function buildHandPicker(state: GameState, onDebugRestart: DebugRestartFn): HTML
     img.src = getTileImagePath(tile);
     img.alt = getTileLabel(tile);
     img.className = 'debug-tile debug-tile--picker';
+    img.dataset.uid = String(tile.uid);
     img.draggable = false;
     img.title = getTileLabel(tile);
     img.addEventListener('click', () => {
