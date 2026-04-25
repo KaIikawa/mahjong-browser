@@ -443,7 +443,7 @@ export function initGameStateWithHand(hand: Tile[], match?: MatchState): GameSta
   }
 
   const wall = remaining.slice(idx);
-  const drawnTile = parentPos === 'player' ? wall.shift()! : null;
+  const drawnTile = wall.shift()!;
   const doraTile = wall.pop()!;
   const riichi: GameState['riichi'] = { player: false, simo: false, toimen: false, kami: false };
 

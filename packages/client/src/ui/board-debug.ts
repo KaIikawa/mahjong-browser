@@ -134,7 +134,7 @@ function buildDebugPanel(
   return panel;
 }
 
-// ─── CPU 操作モードセレクター + 手動捕作 UI ────────────────
+// ─── CPU 操作モードセレクター + 手動操作 UI ────────────────
 function buildDebugCpuMode(
   state: GameState,
   onUpdate: UpdateFn,
@@ -269,9 +269,7 @@ function buildDebugWall(state: GameState, onUpdate: UpdateFn): HTMLElement {
   const wallGrid = document.createElement('div');
   wallGrid.className = 'debug-wall-grid';
 
-  const sorted = sortHand([...state.wall]);
-  sorted.forEach((tile) => {
-    const origIdx = state.wall.findIndex(t => t.uid === tile.uid);
+  state.wall.forEach((tile, origIdx) => {
     const img = document.createElement('img');
     img.src = getTileImagePath(tile);
     img.alt = getTileLabel(tile);
@@ -312,6 +310,9 @@ function calcPlayerDrawOffset(state: GameState): number {
 
 // 指定牌を自分の次ツモに設定する
 function setPlayerNextDraw(state: GameState, tile: Tile): GameState {
+  // playerTurn / cpuTurn 以外のフェーズでは操作しない
+  if (state.phase !== 'playerTurn' && state.phase !== 'cpuTurn') return state;
+
   const idx = state.wall.findIndex(t => t.uid === tile.uid);
   if (idx === -1) return state;
 
@@ -420,6 +421,7 @@ function buildHandPicker(state: GameState, onDebugRestart: DebugRestartFn): HTML
     ...state.wall,
     ...TURN_ORDER.flatMap(pos => state.players[pos].hand),
     ...(state.drawnTile ? [state.drawnTile] : []),
+    ...(state.doraTile ? [state.doraTile] : []),
   ];
 
   for (const preset of YAKU_PRESETS) {
@@ -480,6 +482,7 @@ function buildHandPicker(state: GameState, onDebugRestart: DebugRestartFn): HTML
     ...state.wall,
     ...TURN_ORDER.flatMap(pos => state.players[pos].hand),
     ...(state.drawnTile ? [state.drawnTile] : []),
+    ...(state.doraTile ? [state.doraTile] : []),
   ]);
 
   const pickerGrid = document.createElement('div');
