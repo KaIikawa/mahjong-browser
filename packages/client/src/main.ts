@@ -12,8 +12,9 @@ import type { GameState, Position } from '@mahjong/shared';
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3000';
 const CPU_DELAY = 600;
 
-// ─── デバッグモード: URL ハッシュ #debug でのみ有効 ──────
-const isDebugMode = window.location.hash === '#debug';
+// ─── デバッグモード: 開発環境かつ URL ハッシュ #debug でのみ有効 ──
+// 本番ビルド時は import.meta.env.DEV が false に置換されるため常に無効
+const isDebugMode = import.meta.env.DEV && window.location.hash === '#debug';
 
 // ─── 状態 ──────────────────────────────────────────
 let gameState: GameState = initGameState();
