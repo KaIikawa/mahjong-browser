@@ -161,7 +161,7 @@ function buildDebugCpuMode(
   }
   section.appendChild(modeRow);
 
-  // 手動操作モード且つ cpuTurn の時: 当該 CPU の捕作 UI を表示
+  // 手動操作モード且つ cpuTurn の時: 当該 CPU の操作 UI を表示
   if (cpuMode === 'manual' && state.phase === 'cpuTurn') {
     const pos = state.currentTurn;
     const posLabels: Record<Position, string> = {
@@ -171,7 +171,7 @@ function buildDebugCpuMode(
 
     const manualTitle = document.createElement('div');
     manualTitle.className = 'debug-subtitle';
-    manualTitle.textContent = `${cpuName}の捕作牌を選択 (13枚の手牌 + 次ツモ牌):`;
+    manualTitle.textContent = `${cpuName}の操作牌を選択 (13枚の手牌 + 次ツモ牌)`;
     section.appendChild(manualTitle);
 
     const handRow = document.createElement('div');
@@ -187,7 +187,7 @@ function buildDebugCpuMode(
       img.src = getTileImagePath(tile);
       img.alt = getTileLabel(tile);
       img.draggable = false;
-      img.title = `${getTileLabel(tile)} — この牌を捕てる`;
+      img.title = `${getTileLabel(tile)} — この牌を捨てる`;
       img.className = 'debug-tile debug-tile--wall' + (tile.uid === nextWallTile?.uid ? ' debug-tile--next' : '');
       img.addEventListener('click', () => {
         onUpdate(cpuDrawAndDiscardAt(state, tile.uid));
