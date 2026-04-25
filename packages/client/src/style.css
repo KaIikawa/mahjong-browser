@@ -309,7 +309,9 @@ h1 {
   align-content: start;
   /* 6枚×48px + 5gap×2px = 298px、padding含め固定幅 */
   width: calc(6 * 48px + 5 * 2px);
-  min-height: 52px;
+  /* 最大行数を3行分で固定—捨て牌が増えてもレイアウトシフトしない */
+  height: calc(3 * 48px + 2 * 2px);
+  overflow: hidden;
 }
 
 /* 対面: 右→左に並べ、新しい行は上（対面の手牌側）へ追加 */
@@ -321,7 +323,9 @@ h1 {
   align-content: flex-start;
   gap: 2px;
   width: calc(6 * 48px + 5 * 2px);
-  min-height: 52px;
+  /* 最大行数を3行分で固定 */
+  height: calc(3 * 48px + 2 * 2px);
+  overflow: hidden;
 }
 
 /* 上家: 縦並び 6枚で折り返し。direction:rtl で新しい列を左方向に追加 */
@@ -332,8 +336,10 @@ h1 {
   grid-auto-flow: column;
   direction: rtl;
   gap: 2px;
-  min-width: 52px;
-  max-height: calc(6 * 48px + 5 * 2px);
+  /* 最大列数を3列分で固定 */
+  width: calc(3 * 48px + 2 * 2px);
+  height: calc(6 * 48px + 5 * 2px);
+  overflow: hidden;
 }
 
 /* 下家: 下から上へ積み上げ（自分視点で左→右と同じ並び順） */
@@ -343,9 +349,10 @@ h1 {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 2px;
-  min-width: 52px;
-  /* 高さを固定してflex折り返しのトリガーにする */
+  /* 最大列数を3列分で固定 */
+  width: calc(3 * 48px + 2 * 2px);
   height: calc(6 * 48px + 5 * 2px);
+  overflow: hidden;
 }
 
 /* ─── 捨て牌画像 ────────────────────────────────────── */
