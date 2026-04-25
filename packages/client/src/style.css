@@ -80,6 +80,21 @@ h1 {
   color: #f0c040;
 }
 
+/* 自分のスコアエントリー */
+.score-entry--self .score-name {
+  color: #f0c040;
+}
+
+/* 手番プレイヤーのスコアエントリーをハイライト */
+.score-entry--active .score-name {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+.score-entry--active .score-value {
+  color: #4ade80;
+}
+
 .score-name {
   font-size: 11px;
   color: #aaa;
@@ -192,6 +207,12 @@ h1 {
   padding-top: 6px;
 }
 
+/* 手番プレイヤーのエリアをハイライト */
+.area--active {
+  background: rgba(74, 222, 128, 0.08);
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.5);
+}
+
 /* ─── プレイヤーラベル ──────────────────────────────── */
 .player-label {
   font-size: 11px;
@@ -255,6 +276,22 @@ h1 {
   color: #ccc;
   text-align: center;
   min-height: 16px;
+}
+
+/* 手番中は大きく強調表示（緑の補色：ピンク） */
+.phase-msg--active {
+  font-size: 14px;
+  font-weight: bold;
+  color: #f472b6;
+  text-shadow: 0 0 8px rgba(244, 114, 182, 0.6);
+}
+
+/* 和了時 */
+.phase-msg--agari {
+  font-size: 14px;
+  font-weight: bold;
+  color: #f0c040;
+  text-shadow: 0 0 8px rgba(240, 192, 64, 0.6);
 }
 
 /* ─── 捨て牌ゾーン (共通) ───────────────────────────── */
