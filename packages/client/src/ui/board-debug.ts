@@ -17,7 +17,7 @@ import { renderBoard } from './board';
 import { initGameStateWithShanten, initGameStateWithHand, cpuDrawAndDiscardAt } from '../game/state';
 
 // CPU 操作モード
-export type DebugCpuMode = 'auto-discard' | 'manual' | 'ai';
+export type DebugCpuMode = 'auto-discard' | 'manual';
 type SetCpuModeFn = (mode: DebugCpuMode) => void;
 
 // ─── 役プリセット定義 ─────────────────────────────────────
@@ -149,7 +149,6 @@ function buildDebugCpuMode(
   const modes: { mode: DebugCpuMode; label: string }[] = [
     { mode: 'auto-discard', label: '自動ツモ切り' },
     { mode: 'manual',       label: '手動操作' },
-    { mode: 'ai',           label: 'AI操作' },
   ];
 
   for (const { mode, label } of modes) {
@@ -318,7 +317,8 @@ function setPlayerNextDraw(state: GameState, tile: Tile): GameState {
   const offset = calcPlayerDrawOffset(state);
   const newWall = [...state.wall];
   newWall.splice(idx, 1);
-  newWall.splice(offset, 0, tile);
+  const insertIndex = idx < offset ? offset - 1 : offset;
+  newWall.splice(insertIndex, 0, tile);
   return { ...state, wall: newWall };
 }
 

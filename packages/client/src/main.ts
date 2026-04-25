@@ -23,7 +23,7 @@ let debugCpuMode: DebugCpuMode = 'auto-discard';
 export function getDebugCpuMode(): DebugCpuMode { return debugCpuMode; }
 export function setDebugCpuMode(mode: DebugCpuMode): void {
   debugCpuMode = mode;
-  // 手動モードから自動モードに切り替えた場合、保留中のターンを再開倒す
+  // 手動モードから自動モードに切り替えた場合、保留中のターンを再開する
   if (mode !== 'manual') scheduleCpuIfNeeded();
   renderCurrentBoard();
 }
