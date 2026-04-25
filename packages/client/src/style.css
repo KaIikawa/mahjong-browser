@@ -301,14 +301,14 @@ h1 {
   padding: 3px;
 }
 
-/* 自分: 横並び 8枚で折り返し・左→右・新しい行は下（手前から中央方向） */
+/* 自分: 横並び 6枚で折り返し・左→右・新しい行は下（手前から中央方向） */
 .discard-zone--player {
   display: grid;
-  grid-template-columns: repeat(8, 48px);
+  grid-template-columns: repeat(6, 48px);
   gap: 2px;
   align-content: start;
-  /* 8枚×48px + 7gap×2px = 398px、padding含め固定幅 */
-  width: calc(8 * 48px + 7 * 2px);
+  /* 6枚×48px + 5gap×2px = 298px、padding含め固定幅 */
+  width: calc(6 * 48px + 5 * 2px);
   min-height: 52px;
 }
 
@@ -320,20 +320,20 @@ h1 {
   flex-wrap: wrap-reverse;
   align-content: flex-start;
   gap: 2px;
-  width: calc(8 * 48px + 7 * 2px);
+  width: calc(6 * 48px + 5 * 2px);
   min-height: 52px;
 }
 
-/* 上家: 縦並び 8枚で折り返し。direction:rtl で新しい列を左方向に追加 */
+/* 上家: 縦並び 6枚で折り返し。direction:rtl で新しい列を左方向に追加 */
 /* JS逆順なし・既存牌はシフトしない */
 .discard-zone--kami {
   display: grid;
-  grid-template-rows: repeat(8, 48px);
+  grid-template-rows: repeat(6, 48px);
   grid-auto-flow: column;
   direction: rtl;
   gap: 2px;
   min-width: 52px;
-  max-height: calc(8 * 48px + 7 * 2px);
+  max-height: calc(6 * 48px + 5 * 2px);
 }
 
 /* 下家: 下から上へ積み上げ（自分視点で左→右と同じ並び順） */
@@ -345,7 +345,7 @@ h1 {
   gap: 2px;
   min-width: 52px;
   /* 高さを固定してflex折り返しのトリガーにする */
-  height: calc(8 * 48px + 7 * 2px);
+  height: calc(6 * 48px + 5 * 2px);
 }
 
 /* ─── 捨て牌画像 ────────────────────────────────────── */
