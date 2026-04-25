@@ -152,21 +152,35 @@ function buildCenterTable(
   const center = document.createElement('div');
   center.className = 'center-table';
 
+  // ゲーム全体で「直前に捨てられた1枚」を特定する。
+  // waitingRon は捨てた沖が明で、それ以外は現在手番の1つ前のプレイヤーの最後の捨て牌。
+  let latestDiscardUid: number | null = null;
+  if (state.phase === 'waitingRon' && state.waitingRon) {
+    latestDiscardUid = state.waitingRon.tile.uid;
+  } else if (state.phase === 'playerTurn' || state.phase === 'cpuTurn') {
+    const prevIdx = (TURN_ORDER.indexOf(state.currentTurn) - 1 + 4) % 4;
+    const prevPos = TURN_ORDER[prevIdx];
+    const prevDiscards = state.players[prevPos].discards;
+    if (prevDiscards.length > 0) {
+      latestDiscardUid = prevDiscards[prevDiscards.length - 1].uid;
+    }
+  }
+
   // 上段: 対面の河
-  center.appendChild(buildDiscardZone(state, toimenPos, 'toimen'));
+  center.appendChild(buildDiscardZone(state, toimenPos, 'toimen', latestDiscardUid));
 
   // 中段: 上家の河 | 山情報 | 下家の河
   const centerRow = document.createElement('div');
   centerRow.className = 'center-row';
 
-  centerRow.appendChild(buildDiscardZone(state, kamiPos, 'kami'));
+  centerRow.appendChild(buildDiscardZone(state, kamiPos, 'kami', latestDiscardUid));
   centerRow.appendChild(buildWallInfo(state));
-  centerRow.appendChild(buildDiscardZone(state, simoPos, 'simo'));
+  centerRow.appendChild(buildDiscardZone(state, simoPos, 'simo', latestDiscardUid));
 
   center.appendChild(centerRow);
 
   // 下段: 自分の河
-  center.appendChild(buildDiscardZone(state, selfPos, 'player'));
+  center.appendChild(buildDiscardZone(state, selfPos, 'player', latestDiscardUid));
 
   return center;
 }
@@ -229,16 +243,26 @@ function buildWallInfo(state: GameState): HTMLElement {
 
 // ─── 捨て牌ゾーン (4方向共通、_furo.gif を使用) ─────────
 // actualPos: データアクセス用実座席, visualPos: CSS/画像パス用視覚位置
-function buildDiscardZone(state: GameState, actualPos: Position, visualPos: Position): HTMLElement {
+// latestDiscardUid: ゲーム全体で最後に捨てられた牌の uid (なければ null)
+function buildDiscardZone(state: GameState, actualPos: Position, visualPos: Position, latestDiscardUid: number | null): HTMLElement {
   const zone = document.createElement('div');
   zone.className = `discard-zone discard-zone--${visualPos}`;
 
-  state.players[actualPos].discards.forEach((tile) => {
+  const discards = state.players[actualPos].discards;
+
+  // JS 側では全方向ともオリジナル順（古い順）のまま使用する。
+  // 対面: CSS flex-direction:row-reverse + wrap-reverse で右→左・上方向に行追加
+  // 上家: CSS direction:rtl + grid-auto-flow:column で右列→左列方向に列追加
+  // 下家: CSS flex-direction:column-reverse で下→上方向に積み上げ
+  const tiles = discards;
+
+  tiles.forEach((tile) => {
     const img = document.createElement('img');
     img.src = getDiscardImagePath(tile, visualPos);
     img.alt = getTileLabel(tile);
     img.draggable = false;
-    img.className = 'discard-tile';
+    img.className = 'discard-tile'
+      + (latestDiscardUid !== null && tile.uid === latestDiscardUid ? ' discard-tile--latest' : '');
     zone.appendChild(img);
   });
 
