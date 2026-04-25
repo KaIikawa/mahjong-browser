@@ -1,7 +1,7 @@
 import type { GameState, Position, Tile, MatchState } from '@mahjong/shared';
 import { TURN_ORDER, initMatchState } from '@mahjong/shared';
 import { createDeck, shuffleDeck, sortHand } from '@mahjong/shared';
-import { isAgari, isTenpai } from '@mahjong/shared';
+import { calcShanten, isAgari, isTenpai } from '@mahjong/shared';
 import { detectYaku, hasValidYaku } from '@mahjong/shared';
 import { calcScore } from '@mahjong/shared';
 import { getParent } from '@mahjong/shared';
@@ -325,4 +325,140 @@ export function declareRon(state: GameState): GameState {
 export function cancelRon(state: GameState): GameState {
   if (state.phase !== 'waitingRon' || !state.waitingRon) return state;
   return nextState({ ...state, waitingRon: null }, state.currentTurn);
+}
+
+// ─── [デバッグ用] 指定シャンテン数の配牌で初期化 ────────
+// targetShanten: 0=聴牌, 1=1向聴, 2=2向聴, -1=ランダム(制約なし)
+// 条件を満たす手牌が生成されるまで最大100回リトライする
+export function initGameStateWithShanten(targetShanten: number, match?: MatchState): GameState {
+  if (targetShanten < 0) return initGameState(match);
+  for (let i = 0; i < 100; i++) {
+    const state = initGameState(match);
+    if (calcShanten(state.players['player'].hand) === targetShanten) return state;
+  }
+  return initGameState(match);
+}
+
+// ─── [デバッグ用] CPU が指定UID の牌を捨てる ───────────
+// cpuDrawAndDiscard と同じ流れだが、ランダム捨てを discardUid 指定に変える
+// discardUid が -1 または見つからない場合はランダム捨て
+export function cpuDrawAndDiscardAt(state: GameState, discardUid: number): GameState {
+  if (state.phase !== 'cpuTurn') return state;
+
+  const pos = state.currentTurn;
+
+  if (state.wall.length === 0) {
+    return { ...state, phase: 'ryukyoku', drawnTile: null };
+  }
+
+  const [drawn, ...restWall] = state.wall;
+  const cpuPlayer = state.players[pos];
+
+  // ツモ和了チェック
+  const cpuFullHand = [...cpuPlayer.hand, drawn];
+  if (isAgari(cpuFullHand)) {
+    const isParent = getParent(state.match.round) === pos;
+    const yakuList  = detectYaku(cpuFullHand, true, false, state.doraTile, pos);
+    const scoreResult = calcScore(yakuList, cpuFullHand, true, isParent);
+    return {
+      ...state,
+      wall: restWall,
+      phase: 'agari',
+      agariInfo: {
+        winner: pos,
+        tile: drawn,
+        isTsumo: true,
+        yakuList,
+        han: scoreResult.han,
+        fu: scoreResult.fu,
+        score: scoreResult.score,
+        scoreDetail: scoreResult.scoreDetail,
+      },
+    };
+  }
+
+  // 指定 UID の牌を捨てる (見つからなければランダム)
+  const fullHand = cpuFullHand; // 14枚
+  const specifiedIdx = discardUid >= 0 ? fullHand.findIndex(t => t.uid === discardUid) : -1;
+  const discardIdx = specifiedIdx >= 0 ? specifiedIdx : Math.floor(Math.random() * fullHand.length);
+  const discarded = fullHand[discardIdx];
+  const newHand = fullHand.filter((_, i) => i !== discardIdx);
+
+  const newPlayers: GameState['players'] = {
+    ...state.players,
+    [pos]: {
+      ...cpuPlayer,
+      hand: newHand,
+      discards: [...cpuPlayer.discards, discarded],
+    },
+  };
+
+  const afterDiscard: GameState = {
+    ...state,
+    players: newPlayers,
+    wall: restWall,
+    drawnTile: null,
+    selectedIndex: null,
+  };
+
+  // プレイヤーのロン確認
+  const playerHand = state.players['player'].hand;
+  const playerFullHand = [...playerHand, discarded];
+  if (isAgari(playerFullHand)) {
+    const isRiichi = state.riichi['player'];
+    const yakuList = detectYaku(playerFullHand, false, isRiichi, state.doraTile, 'player');
+    if (hasValidYaku(yakuList)) {
+      const nextPos = nextTurn(pos);
+      return {
+        ...afterDiscard,
+        phase: 'waitingRon',
+        waitingRon: { discarder: pos, tile: discarded, candidates: ['player'] },
+        currentTurn: nextPos,
+      };
+    }
+  }
+
+  return nextState(afterDiscard, nextTurn(pos));
+}
+
+// ─── [デバッグ用] 指定手牌で初期化 ─────────────────────
+// hand: プレイヤーの初期手牌 (13枚)。残りは山から配布される
+export function initGameStateWithHand(hand: Tile[], match?: MatchState): GameState {
+  const currentMatch = match ?? initMatchState();
+  const handUids = new Set(hand.map(t => t.uid));
+
+  // 指定手牌を除いた残りのデッキをシャッフル
+  const remaining = shuffleDeck(createDeck().filter(t => !handUids.has(t.uid)));
+  let idx = 0;
+
+  const parentPos = getParent(currentMatch.round);
+  const players = {} as GameState['players'];
+  for (const pos of TURN_ORDER) {
+    if (pos === 'player') {
+      players[pos] = { position: pos, hand: sortHand([...hand]), discards: [] };
+    } else {
+      players[pos] = { position: pos, hand: remaining.slice(idx, idx + 13), discards: [] };
+      idx += 13;
+    }
+  }
+
+  const wall = remaining.slice(idx);
+  const drawnTile = wall.shift()!;
+  const doraTile = wall.pop()!;
+  const riichi: GameState['riichi'] = { player: false, simo: false, toimen: false, kami: false };
+
+  return {
+    wall,
+    players,
+    drawnTile,
+    selectedIndex: null,
+    phase: parentPos === 'player' ? 'playerTurn' : 'cpuTurn',
+    currentTurn: parentPos,
+    agariInfo: null,
+    doraTile,
+    riichi,
+    match: currentMatch,
+    playerNames: { player: 'あなた', simo: 'CPU南', toimen: 'CPU西', kami: 'CPU北' },
+    waitingRon: null,
+  };
 }
