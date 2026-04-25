@@ -269,7 +269,9 @@ function buildDebugWall(state: GameState, onUpdate: UpdateFn): HTMLElement {
   const wallGrid = document.createElement('div');
   wallGrid.className = 'debug-wall-grid';
 
-  state.wall.forEach((tile, origIdx) => {
+  const sorted = sortHand([...state.wall]);
+  sorted.forEach((tile) => {
+    const origIdx = state.wall.findIndex(t => t.uid === tile.uid);
     const img = document.createElement('img');
     img.src = getTileImagePath(tile);
     img.alt = getTileLabel(tile);
