@@ -17,7 +17,7 @@ import { renderBoard } from './board';
 import { initGameStateWithShanten, initGameStateWithHand, cpuDrawAndDiscardAt } from '../game/state';
 
 // CPU 操作モード
-export type DebugCpuMode = 'auto-discard' | 'manual';
+export type DebugCpuMode = 'auto-discard' | 'manual' | 'ai';
 type SetCpuModeFn = (mode: DebugCpuMode) => void;
 
 // ─── 役プリセット定義 ─────────────────────────────────────
@@ -149,6 +149,7 @@ function buildDebugCpuMode(
   const modes: { mode: DebugCpuMode; label: string }[] = [
     { mode: 'auto-discard', label: '自動ツモ切り' },
     { mode: 'manual',       label: '手動操作' },
+    { mode: 'ai',           label: 'AI操作' },
   ];
 
   for (const { mode, label } of modes) {
@@ -159,6 +160,14 @@ function buildDebugCpuMode(
     modeRow.appendChild(btn);
   }
   section.appendChild(modeRow);
+
+  // AI操作モード時: 現時点では自動ツモ切りと同じ動作であることを明示
+  if (cpuMode === 'ai') {
+    const aiNote = document.createElement('div');
+    aiNote.className = 'debug-subtitle';
+    aiNote.textContent = '※ AI操作は現時点では自動ツモ切りと同じ動作です（将来的に改善予定）';
+    section.appendChild(aiNote);
+  }
 
   // 手動操作モード且つ cpuTurn の時: 当該 CPU の操作 UI を表示
   if (cpuMode === 'manual' && state.phase === 'cpuTurn') {
