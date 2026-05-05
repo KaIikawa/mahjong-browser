@@ -37,6 +37,7 @@ export function initGameState(match?: MatchState): GameState {
 
   // リーチ状態: 全員false
   const riichi: GameState['riichi'] = { player: false, simo: false, toimen: false, kami: false };
+  const riichiTileUid: GameState['riichiTileUid'] = { player: null, simo: null, toimen: null, kami: null };
 
   return {
     wall,
@@ -48,6 +49,7 @@ export function initGameState(match?: MatchState): GameState {
     agariInfo: null,
     doraTile,
     riichi,
+    riichiTileUid,
     match: currentMatch,
     playerNames: { player: 'あなた', simo: 'CPU南', toimen: 'CPU西', kami: 'CPU北' },
     waitingRon: null,
@@ -127,6 +129,7 @@ export function declareRiichi(state: GameState): GameState {
     phase: 'cpuTurn',
     currentTurn: next,
     riichi: { ...state.riichi, player: true },
+    riichiTileUid: { ...state.riichiTileUid, player: discarded.uid },
   };
 
   // 次がプレイヤーならツモ牌を先に引いておく
@@ -446,6 +449,7 @@ export function initGameStateWithHand(hand: Tile[], match?: MatchState): GameSta
   const drawnTile = wall.shift()!;
   const doraTile = wall.pop()!;
   const riichi: GameState['riichi'] = { player: false, simo: false, toimen: false, kami: false };
+  const riichiTileUid: GameState['riichiTileUid'] = { player: null, simo: null, toimen: null, kami: null };
 
   return {
     wall,
@@ -457,6 +461,7 @@ export function initGameStateWithHand(hand: Tile[], match?: MatchState): GameSta
     agariInfo: null,
     doraTile,
     riichi,
+    riichiTileUid,
     match: currentMatch,
     playerNames: { player: 'あなた', simo: 'CPU南', toimen: 'CPU西', kami: 'CPU北' },
     waitingRon: null,

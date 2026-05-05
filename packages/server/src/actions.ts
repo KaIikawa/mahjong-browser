@@ -59,6 +59,7 @@ export function initGameState(match?: MatchState, playerNames?: Map<Position, st
   const drawnTile = wall.shift()!;
   const doraTile = wall.pop()!;
   const riichi: GameState['riichi'] = { player: false, simo: false, toimen: false, kami: false };
+  const riichiTileUid: GameState['riichiTileUid'] = { player: null, simo: null, toimen: null, kami: null };
   const names: GameState['playerNames'] = {
     player: playerNames?.get('player') ?? 'Player',
     simo:   playerNames?.get('simo')   ?? 'Simo',
@@ -76,6 +77,7 @@ export function initGameState(match?: MatchState, playerNames?: Map<Position, st
     agariInfo: null,
     doraTile,
     riichi,
+    riichiTileUid,
     match: currentMatch,
     playerNames: names,
     waitingRon: null,
@@ -201,6 +203,7 @@ export function declareRiichiAt(state: GameState, pos: Position): GameState {
     drawnTile: null,
     selectedIndex: null,
     riichi: { ...state.riichi, [pos]: true },
+    riichiTileUid: { ...state.riichiTileUid, [pos]: discarded.uid },
     currentTurn: next,
   }, next);
 }
