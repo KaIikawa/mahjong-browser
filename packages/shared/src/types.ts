@@ -97,6 +97,7 @@ export interface GameState {
   agariInfo: AgariInfo | null;          // 和了情報 (phase === 'agari' 時のみ非null)
   doraTile: Tile;                       // ドラ表示牌 (公開)
   riichi: Record<Position, boolean>;   // リーチ状態
+  riichiTileUid: Record<Position, number | null>; // リーチ宣言牌のuid (null=未リーチ)
   match: MatchState;                    // 対局状態
   playerNames: Record<Position, string>; // プレイヤー名
   waitingRon: WaitingRonState | null;  // ロン確認待ち (phase === 'waitingRon' 時のみ非null)

@@ -499,6 +499,14 @@ h1 {
   filter: drop-shadow(0 0 5px rgba(255, 200, 0, 0.85));
 }
 
+/* リーチ宣言牌: 橙色ハイライト */
+.discard-tile--riichi {
+  outline: 3px solid rgba(255, 140, 0, 0.95);
+  outline-offset: -2px;
+  border-radius: 2px;
+  filter: drop-shadow(0 0 5px rgba(255, 120, 0, 0.85));
+}
+
 /* ─── 手牌コンテナ ──────────────────────────────────── */
 .hand {
   display: flex;
@@ -688,6 +696,24 @@ h1 {
   border-radius: 4px;
   letter-spacing: 0.1em;
   animation: tenpai-pulse 1s ease-in-out infinite;
+}
+
+/* 他プレイヤーエリア内のリーチラベル: 小さめ */
+.riichi-label--opponent {
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+/* スコアパネルの R バッジ */
+.riichi-badge {
+  display: inline-block;
+  padding: 0px 4px;
+  background: #8e44ad;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 3px;
+  letter-spacing: 0;
 }
 
 @keyframes tenpai-pulse {

@@ -151,6 +151,12 @@ function buildScorePanel(state: GameState, myPosition: Position | null): HTMLEle
     const scoreEl = document.createElement('span');
     scoreEl.className = 'score-value';
     scoreEl.textContent = match.scores[pos].toLocaleString();
+    if (state.riichi[pos]) {
+      const rBadge = document.createElement('span');
+      rBadge.className = 'riichi-badge';
+      rBadge.textContent = 'R';
+      entry.appendChild(rBadge);
+    }
     entry.appendChild(scoreEl);
 
     scoreList.appendChild(entry);
@@ -169,6 +175,12 @@ function buildOpponentArea(state: GameState, actualPos: Position, visualPos: 'to
 
   const labels: Record<string, string> = { toimen: '対面', kami: '上家', simo: '下家' };
   area.appendChild(buildLabel(labels[visualPos]));
+  if (state.riichi[actualPos]) {
+    const riichiLabel = document.createElement('span');
+    riichiLabel.className = 'riichi-label riichi-label--opponent';
+    riichiLabel.textContent = '立直';
+    area.appendChild(riichiLabel);
+  }
   area.appendChild(buildCpuHand(state, actualPos, visualPos));
 
   return area;
@@ -315,8 +327,10 @@ function buildDiscardZone(state: GameState, actualPos: Position, visualPos: Posi
     img.src = getDiscardImagePath(tile, visualPos);
     img.alt = getTileLabel(tile);
     img.draggable = false;
+    const isRiichiTile = state.riichiTileUid[actualPos] === tile.uid;
     img.className = 'discard-tile'
-      + (latestDiscardUid !== null && tile.uid === latestDiscardUid ? ' discard-tile--latest' : '');
+      + (latestDiscardUid !== null && tile.uid === latestDiscardUid ? ' discard-tile--latest' : '')
+      + (isRiichiTile ? ' discard-tile--riichi' : '');
     zone.appendChild(img);
   });
 
