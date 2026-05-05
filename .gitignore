@@ -7,3 +7,6 @@ packages/client/.env.production
 # ビルド成果物
 packages/client/dist/
 packages/server/dist/
+
+# ローカルメモ
+memo/
