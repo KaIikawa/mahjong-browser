@@ -97,6 +97,82 @@ function buildBoard(
   // ③ 自分エリア (下) - 手牌+ボタン
   board.appendChild(buildPlayerArea(state, onUpdate, onRestart, onNextRound, myPosition));
 
+  // 和了モーダル (独立したモーダル形式)
+  if (state.phase === 'agari') {
+    const info = state.agariInfo!;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'agari-modal-backdrop';
+
+    const modal = document.createElement('div');
+    modal.className = 'agari-overlay';
+    const winnerName = state.playerNames?.[info.winner] ?? info.winner;
+    const agariType = info.isTsumo ? 'ツモ' : 'ロン';
+
+    const title = document.createElement('span');
+    title.className = 'agari-title';
+    title.textContent = '和　了';
+    modal.appendChild(title);
+
+    const winner = document.createElement('span');
+    winner.className = 'agari-winner';
+    winner.textContent = `${winnerName} の${agariType}`;
+    modal.appendChild(winner);
+
+    // 和了手牌
+    if (info.hand && info.hand.length > 0) {
+      const handRow = document.createElement('div');
+      handRow.className = 'agari-hand';
+      info.hand.forEach(t => {
+        const img = document.createElement('img');
+        img.src = getTileImagePath(t);
+        img.alt = getTileLabel(t);
+        img.draggable = false;
+        img.className = 'agari-hand__tile'
+          + (t.uid === info.tile.uid ? ' agari-hand__tile--winning' : '');
+        handRow.appendChild(img);
+      });
+      modal.appendChild(handRow);
+    }
+
+    // 役一覧
+    if (info.yakuList.length > 0) {
+      const yakuTable = document.createElement('div');
+      yakuTable.className = 'agari-yaku-table';
+      info.yakuList.forEach(y => {
+        const row = document.createElement('div');
+        row.className = 'agari-yaku-row';
+        row.innerHTML = `<span class="yaku-name">${y.name}</span><span class="yaku-han">${y.han}翻</span>`;
+        yakuTable.appendChild(row);
+      });
+      const total = document.createElement('div');
+      total.className = 'agari-yaku-total';
+      total.textContent = `${info.han}翻${info.fu}符`;
+      yakuTable.appendChild(total);
+      modal.appendChild(yakuTable);
+    }
+
+    // 点数
+    const score = document.createElement('span');
+    score.className = 'agari-score';
+    score.textContent = info.scoreDetail;
+    modal.appendChild(score);
+
+    // ボタン
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn btn--restart';
+    nextBtn.textContent = state.match.finished ? '結果を見る' : '次の局へ';
+    nextBtn.addEventListener('click', () => {
+      document.body.style.overflow = '';
+      onNextRound(state);
+    });
+    modal.appendChild(nextBtn);
+
+    backdrop.appendChild(modal);
+    board.appendChild(backdrop);
+    // モーダル表示中はページスクロールを無効化
+    document.body.style.overflow = 'hidden';
+  }
+
   return board;
 }
 
@@ -568,62 +644,6 @@ function buildPlayerArea(
   }
 
   area.appendChild(btnRow);
-
-  // 和了オーバーレイ
-  if (state.phase === 'agari') {
-    const info = state.agariInfo!;
-    const overlay = document.createElement('div');
-    overlay.className = 'agari-overlay';
-    const winnerName = state.playerNames?.[info.winner] ?? info.winner;
-    const agariType = info.isTsumo ? 'ツモ' : 'ロン';
-
-    const title = document.createElement('span');
-    title.className = 'agari-title';
-    title.textContent = '和　了';
-    overlay.appendChild(title);
-
-    const winner = document.createElement('span');
-    winner.className = 'agari-winner';
-    winner.textContent = `${winnerName} の${agariType}`;
-    overlay.appendChild(winner);
-
-    // 役一覧
-    if (info.yakuList.length > 0) {
-      const yakuTable = document.createElement('div');
-      yakuTable.className = 'agari-yaku-table';
-      info.yakuList.forEach(y => {
-        const row = document.createElement('div');
-        row.className = 'agari-yaku-row';
-        row.innerHTML = `<span class="yaku-name">${y.name}</span><span class="yaku-han">${y.han}翻</span>`;
-        yakuTable.appendChild(row);
-      });
-      // 合計
-      const total = document.createElement('div');
-      total.className = 'agari-yaku-total';
-      total.textContent = `${info.han}翻${info.fu}符`;
-      yakuTable.appendChild(total);
-      overlay.appendChild(yakuTable);
-    }
-
-    // 点数
-    const score = document.createElement('span');
-    score.className = 'agari-score';
-    score.textContent = info.scoreDetail;
-    overlay.appendChild(score);
-
-    // 半荘終了なら「終了画面へ」、通常は「次の局へ」
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'btn btn--restart';
-    if (state.match.finished) {
-      nextBtn.textContent = '結果を見る';
-      nextBtn.addEventListener('click', () => onNextRound(state));
-    } else {
-      nextBtn.textContent = '次の局へ';
-      nextBtn.addEventListener('click', () => onNextRound(state));
-    }
-    overlay.appendChild(nextBtn);
-    area.appendChild(overlay);
-  }
 
   // 流局オーバーレイ
   if (state.phase === 'ryukyoku') {
