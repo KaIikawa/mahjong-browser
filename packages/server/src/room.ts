@@ -31,6 +31,32 @@ export interface Room {
 const clientInfo = new Map<WebSocket, { room: Room; pos: Position }>();
 const rooms = new Map<string, Room>();
 
+// ─── ターンタイマー ────────────────────────────────────
+const TURN_LIMIT = 20; // 1手ごとの制限時間（秒）
+const roomTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function clearRoomTimer(roomId: string): void {
+  const t = roomTimers.get(roomId);
+  if (t !== undefined) { clearTimeout(t); roomTimers.delete(roomId); }
+}
+
+function broadcastState(room: Room, newState: GameState): void {
+  room.state = newState;
+  broadcast(room, { type: 'update', state: room.state });
+  clearRoomTimer(room.id);
+  // playerTurn（全員人間）のときのみタイマーを設定
+  if (newState.phase === 'playerTurn') {
+    const pos = newState.currentTurn;
+    const t = setTimeout(() => {
+      roomTimers.delete(room.id);
+      if (!room.state || room.state.phase !== 'playerTurn') return;
+      console.log(`[${room.id}] ${pos} timed out — auto tsumo-giri`);
+      broadcastState(room, discardTileAt(room.state, pos, -1));
+    }, TURN_LIMIT * 1000);
+    roomTimers.set(room.id, t);
+  }
+}
+
 // ─── ルーム操作 ───────────────────────────────────────
 function getOrCreateRoom(id: string): Room {
   if (!rooms.has(id)) {
@@ -97,8 +123,8 @@ export function handleJoin(
 
   // 4 人揃ったらゲーム開始
     if (room.clients.size === 4) {
-      room.state = initGameState(room.match, room.playerNames);
-      broadcast(room, { type: 'update', state: room.state });
+      const initState = initGameState(room.match, room.playerNames);
+      broadcastState(room, initState);
       console.log(`[${roomId}] Game started`);
     }
 }
@@ -159,8 +185,7 @@ export function handleMessage(ws: WebSocket, msg: C2SMessage): void {
       return;
   }
 
-  room.state = newState;
-  broadcast(room, { type: 'update', state: room.state });
+  broadcastState(room, newState);
 }
 
 // ─── エントリポイント: 切断処理 ───────────────────────
@@ -176,6 +201,7 @@ export function handleDisconnect(ws: WebSocket): void {
   console.log(`[${room.id}] ${pos} disconnected (${room.clients.size}/4)`);
 
   if (room.clients.size === 0) {
+    clearRoomTimer(room.id);
     rooms.delete(room.id);
     console.log(`[${room.id}] Room removed`);
   } else {
