@@ -387,6 +387,15 @@ function buildPlayerHand(
             }
           }
         : undefined,
+      onDblClick: isMyTurn && !isRiichi
+        ? () => {
+            if (isOnline) {
+              sendAction({ type: 'discard', index: i });
+            } else {
+              onUpdate(discardTile(state, i));
+            }
+          }
+        : undefined,
     }));
   });
 
@@ -408,6 +417,13 @@ function buildPlayerHand(
           onUpdate({ ...state, selectedIndex: selected });
         } else {
           onUpdate(selectTile(state, -1));
+        }
+      },
+      onDblClick: () => {
+        if (isOnline) {
+          sendAction({ type: 'discard', index: -1 });
+        } else {
+          onUpdate(discardTile(state, -1));
         }
       },
     }));
@@ -682,7 +698,7 @@ function buildFinishedOverlay(state: GameState, onRestart: RestartFn): HTMLEleme
 // ─── 汎用: 手牌画像要素の生成 ────────────────────────
 function buildTileImg(
   tile: Tile,
-  opts: { selected?: boolean; className?: string; onClick?: () => void } = {},
+  opts: { selected?: boolean; className?: string; onClick?: () => void; onDblClick?: () => void } = {},
 ): HTMLImageElement {
   const img = document.createElement('img');
   img.src = getTileImagePath(tile);
@@ -698,6 +714,28 @@ function buildTileImg(
     img.style.cursor = 'pointer';
     img.addEventListener('click', opts.onClick);
   }
+
+  if (opts.onDblClick) {
+    img.style.cursor = 'pointer';
+    // PC: dblclick
+    img.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      opts.onDblClick!();
+    });
+    // スマートフォン: 300ms 以内の 2 回 touchend
+    let lastTouchTime = 0;
+    img.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTouchTime < 300) {
+        e.preventDefault();
+        opts.onDblClick!();
+        lastTouchTime = 0;
+      } else {
+        lastTouchTime = now;
+      }
+    });
+  }
+
   return img;
 }
 
