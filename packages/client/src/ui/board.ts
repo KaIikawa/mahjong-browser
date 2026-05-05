@@ -489,8 +489,7 @@ function buildPlayerArea(
     const info = state.agariInfo!;
     const overlay = document.createElement('div');
     overlay.className = 'agari-overlay';
-    const winnerLabels: Record<string, string> = { player: '自分', simo: '下家', toimen: '対面', kami: '上家' };
-    const winnerName = winnerLabels[info.winner];
+    const winnerName = state.playerNames?.[info.winner] ?? info.winner;
     const agariType = info.isTsumo ? 'ツモ' : 'ロン';
 
     const title = document.createElement('span');
