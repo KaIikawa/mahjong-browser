@@ -17,6 +17,34 @@ function getSelfWind(pos: Position, round: number): string {
   const posIdx    = TURN_ORDER.indexOf(pos);
   return ['東', '南', '西', '北'][(posIdx - parentIdx + 4) % 4];
 }
+
+// ─── 自風バッジ（風牌画像）を生成 ───────────────────────
+const WIND_IMAGE: Record<string, string> = {
+  '東': '/other/kaze/ton.png',
+  '南': '/other/kaze/nan.png',
+  '西': '/other/kaze/sha.png',
+  '北': '/other/kaze/pei.png',
+};
+function buildWindBadge(wind: string, isParent: boolean): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'wind-badge' + (isParent ? ' wind-badge--parent' : '');
+  const label = document.createElement('span');
+  label.className = 'wind-badge__label';
+  label.textContent = '自風';
+  wrap.appendChild(label);
+  const img = document.createElement('img');
+  img.src = WIND_IMAGE[wind] ?? '';
+  img.alt = wind;
+  img.className = 'wind-badge__img';
+  wrap.appendChild(img);
+  if (isParent) {
+    const star = document.createElement('span');
+    star.className = 'wind-badge__parent';
+    star.textContent = '親';
+    wrap.appendChild(star);
+  }
+  return wrap;
+}
 type NextRoundFn = (s: GameState) => void;
 
 // ─── メインレンダラー ────────────────────────────────────
@@ -112,8 +140,13 @@ function buildScorePanel(state: GameState, myPosition: Position | null): HTMLEle
     nameEl.className = 'score-name';
     const wind = getSelfWind(pos, match.round);
     const pName = state.playerNames?.[pos] ?? label;
-    nameEl.textContent = (isActive ? '▶ ' : '') + `${pName}(${wind}${pos === parent ? '・親' : ''})`;
+    nameEl.textContent = (isActive ? '▶ ' : '') + pName;
     entry.appendChild(nameEl);
+
+    // 自風・親マークを分離表示
+    const windBadgeEl = buildWindBadge(wind, pos === parent);
+    windBadgeEl.classList.add('wind-badge--score');
+    entry.appendChild(windBadgeEl);
 
     const scoreEl = document.createElement('span');
     scoreEl.className = 'score-value';
@@ -189,6 +222,21 @@ function buildCenterTable(
 function buildWallInfo(state: GameState): HTMLElement {
   const info = document.createElement('div');
   info.className = 'wall-info';
+
+  // 場風表示
+  const roundWind = state.match.round < 4 ? '東' : '南';
+  const fieldWindWrap = document.createElement('div');
+  fieldWindWrap.className = 'field-wind';
+  const fieldWindLabel = document.createElement('span');
+  fieldWindLabel.className = 'field-wind__label';
+  fieldWindLabel.textContent = '場風';
+  fieldWindWrap.appendChild(fieldWindLabel);
+  const fieldWindImg = document.createElement('img');
+  fieldWindImg.src = WIND_IMAGE[roundWind];
+  fieldWindImg.alt = roundWind;
+  fieldWindImg.className = 'field-wind__img';
+  fieldWindWrap.appendChild(fieldWindImg);
+  info.appendChild(fieldWindWrap);
 
   const wallCount = document.createElement('div');
   wallCount.className = 'wall-count';
@@ -374,6 +422,13 @@ function buildPlayerArea(
   const isOnline = myPosition !== null;
 
   area.appendChild(buildPlayerHand(state, selfPos, isMyTurn, isOnline, onUpdate));
+
+  // 自風バッジ（area--player の右下に絶対配置）
+  const selfWind = getSelfWind(selfPos, state.match.round);
+  const selfIsParent = getParent(state.match.round) === selfPos;
+  const selfWindBadge = buildWindBadge(selfWind, selfIsParent);
+  selfWindBadge.classList.add('wind-badge--player');
+  area.appendChild(selfWindBadge);
 
   const playerTiles = state.players[selfPos].hand;
   const shanten = calcShanten(playerTiles);
