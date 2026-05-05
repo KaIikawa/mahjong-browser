@@ -205,6 +205,8 @@ h1 {
 .area--player {
   width: 100%;
   padding-top: 6px;
+  position: relative;
+  /* 自風バッジの絶対配置のため */
 }
 
 /* 手番プレイヤーのエリアをハイライト */
@@ -218,6 +220,83 @@ h1 {
   font-size: 11px;
   color: #aaa;
   letter-spacing: 0.05em;
+}
+
+/* ─── 自風バッジ ────────────────────────────────────── */
+.wind-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.wind-badge__label {
+  font-size: 10px;
+  color: #7dd3fc;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.wind-badge__img {
+  width: 28px;
+  /* 他プレイヤー用 */
+  height: auto;
+  display: block;
+}
+
+.wind-badge__parent {
+  font-size: 10px;
+  color: #f0c040;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* 自分の自風バッジ: 大きめ・右下に絶対配置 */
+.wind-badge--player {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+}
+
+.wind-badge--player .wind-badge__label {
+  font-size: 12px;
+}
+
+.wind-badge--player .wind-badge__img {
+  width: 38px;
+}
+
+.wind-badge--player .wind-badge__parent {
+  font-size: 12px;
+}
+
+/* スコアパネル内の自風バッジ: 小さめに */
+.wind-badge--score .wind-badge__label {
+  display: none;
+  /* スコア欄は省スペースのため非表示 */
+}
+
+.wind-badge--score .wind-badge__img {
+  width: 18px;
+}
+
+/* ─── 場風表示 ──────────────────────────────────────── */
+.field-wind {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.field-wind__label {
+  font-size: 13px;
+  color: #ccc;
+  font-weight: bold;
+}
+
+.field-wind__img {
+  width: 30px;
+  height: auto;
 }
 
 /* ─── 中央テーブル (緑の卓) ─────────────────────────── */
