@@ -238,6 +238,12 @@ function buildWallInfo(state: GameState): HTMLElement {
   }
   info.appendChild(msg);
 
+  // カウントダウンタイマー表示（main.ts の setInterval が内容を更新する）
+  const timerEl = document.createElement('div');
+  timerEl.id = 'turn-timer';
+  timerEl.className = 'turn-timer';
+  info.appendChild(timerEl);
+
   return info;
 }
 

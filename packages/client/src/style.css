@@ -294,6 +294,34 @@ h1 {
   text-shadow: 0 0 8px rgba(240, 192, 64, 0.6);
 }
 
+/* ─── ターンタイマー ────────────────────────────────── */
+.turn-timer {
+  font-size: 22px;
+  font-weight: bold;
+  color: #e2e8f0;
+  min-height: 28px;
+  text-align: center;
+  line-height: 1;
+  letter-spacing: 0.05em;
+}
+
+/* 残り5秒以下: 赤くして警告 */
+.turn-timer--urgent {
+  color: #f87171;
+  text-shadow: 0 0 8px rgba(248, 113, 113, 0.7);
+  animation: timer-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes timer-pulse {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.15);
+  }
+}
+
 /* ─── 捨て牌ゾーン (共通) ───────────────────────────── */
 .discard-zone {
   background: rgba(0, 0, 0, 0.12);

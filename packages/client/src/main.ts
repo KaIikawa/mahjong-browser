@@ -1,5 +1,5 @@
 import './style.css';
-import { initGameState, cpuDrawAndDiscard } from './game/state';
+import { initGameState, cpuDrawAndDiscard, discardTile } from './game/state';
 import { renderBoard } from './ui/board';
 import { renderBoardDebug } from './ui/board-debug';
 import type { DebugCpuMode } from './ui/board-debug';
@@ -12,6 +12,7 @@ import type { GameState, Position } from '@mahjong/shared';
 // ─── 設定 ──────────────────────────────────────────────────
 const WS_URL = import.meta.env.VITE_WS_URL ?? 'ws://localhost:3000';
 const CPU_DELAY = 600;
+const TURN_LIMIT = 20; // 1手ごとの制限時間（秒）
 
 // ─── デバッグモード: 開発環境かつ URL ハッシュ #debug でのみ有効 ────
 // 本番ビルド時は import.meta.env.DEV が false に置換されるため常に無効
@@ -31,6 +32,8 @@ export function setDebugCpuMode(mode: DebugCpuMode): void {
 // ─── 状態 ──────────────────────────────────────────
 let gameState: GameState = initGameState();
 let cpuTimer: ReturnType<typeof setTimeout> | null = null;
+let turnTimer: ReturnType<typeof setInterval> | null = null;
+let turnTimeLeft = 0;
 let wsClient: WsClient | null = null;
 let myPosition: Position | null = null;   // オンラインモード時の自座席
 let isOnline = false;
@@ -54,10 +57,55 @@ function clearCpuTimer(): void {
   if (cpuTimer !== null) { clearTimeout(cpuTimer); cpuTimer = null; }
 }
 
+// ─── ターンタイマー ──────────────────────────────────
+
+function updateTimerDisplay(): void {
+  const el = document.getElementById('turn-timer');
+  if (!el) return;
+  if (turnTimeLeft > 0) {
+    el.textContent = String(turnTimeLeft);
+    el.className = 'turn-timer' + (turnTimeLeft <= 5 ? ' turn-timer--urgent' : '');
+  } else {
+    el.textContent = '';
+    el.className = 'turn-timer';
+  }
+}
+
+function clearTurnTimer(): void {
+  if (turnTimer !== null) { clearInterval(turnTimer); turnTimer = null; }
+  turnTimeLeft = 0;
+  updateTimerDisplay();
+}
+
+function startTurnTimer(): void {
+  clearTurnTimer();
+  turnTimeLeft = TURN_LIMIT;
+  updateTimerDisplay();
+  turnTimer = setInterval(() => {
+    turnTimeLeft--;
+    updateTimerDisplay();
+    if (turnTimeLeft <= 0) {
+      clearTurnTimer();
+      // 時間切れ: 自動ツモ切り
+      if (isOnline) {
+        sendAction({ type: 'discard', index: -1 });
+      } else {
+        update(discardTile(gameState, -1));
+      }
+    }
+  }, 1000);
+}
+
 function update(newState: GameState): void {
+  clearTurnTimer();
   gameState = newState;
   renderCurrentBoard();
   if (!isOnline) scheduleCpuIfNeeded();
+  // 自分のターンになったらカウントダウン開始
+  const selfPos: Position = myPosition ?? 'player';
+  if (gameState.phase === 'playerTurn' && gameState.currentTurn === selfPos) {
+    startTurnTimer();
+  }
 }
 
 function scheduleCpuIfNeeded(): void {
@@ -127,8 +175,15 @@ function startOnline(playerName: string, roomId: string): void {
       if (myPosition) renderWaiting(count, myPosition);
     },
     onStateUpdate: (state) => {
+      clearTurnTimer();
       gameState = state;
       renderCurrentBoard();
+      // サーバーからの状態更新: 自分のターンならカウントダウン表示のみ開始
+      // (実際の自動ツモ切りはサーバー側タイマーで実行)
+      const selfPos: Position = myPosition ?? 'player';
+      if (gameState.phase === 'playerTurn' && gameState.currentTurn === selfPos) {
+        startTurnTimer();
+      }
     },
     onError: (message) => {
       renderConnectionError(message, () => {
