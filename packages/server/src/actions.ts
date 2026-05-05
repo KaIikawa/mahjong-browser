@@ -173,6 +173,7 @@ export function declareTsumoAt(state: GameState, pos: Position): GameState {
       fu: scoreResult.fu,
       score: scoreResult.score,
       scoreDetail: scoreResult.scoreDetail,
+      hand,
     },
   };
 }
@@ -235,6 +236,7 @@ export function declareRonAt(state: GameState, pos: Position): GameState {
       fu: scoreResult.fu,
       score: scoreResult.score,
       scoreDetail: scoreResult.scoreDetail,
+      hand,
     },
   };
 }

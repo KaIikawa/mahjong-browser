@@ -98,6 +98,7 @@ export function declareTsumo(state: GameState): GameState {
       fu: scoreResult.fu,
       score: scoreResult.score,
       scoreDetail: scoreResult.scoreDetail,
+      hand,
     },
   };
 }
@@ -219,6 +220,7 @@ export function cpuDrawAndDiscard(state: GameState): GameState {
         fu: scoreResult.fu,
         score: scoreResult.score,
         scoreDetail: scoreResult.scoreDetail,
+        hand: cpuFullHand,
       },
     };
   }
@@ -319,6 +321,7 @@ export function declareRon(state: GameState): GameState {
       fu: scoreResult.fu,
       score: scoreResult.score,
       scoreDetail: scoreResult.scoreDetail,
+      hand,
     },
   };
 }
@@ -376,6 +379,7 @@ export function cpuDrawAndDiscardAt(state: GameState, discardUid: number): GameS
         fu: scoreResult.fu,
         score: scoreResult.score,
         scoreDetail: scoreResult.scoreDetail,
+        hand: cpuFullHand,
       },
     };
   }

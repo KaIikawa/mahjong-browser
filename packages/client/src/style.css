@@ -729,17 +729,33 @@ h1 {
 }
 
 /* ─── 和了オーバーレイ ──────────────────────────────── */
+/* ─── 和了モーダル: バックドロップ ──────────────────── */
+.agari-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(80, 80, 80, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* バックドロップ自体のクリックを吸収してモーダル外を操作不可にする */
+  pointer-events: all;
+}
+
 .agari-overlay {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  margin-top: 12px;
-  padding: 14px 32px;
+  padding: 24px 40px;
   background: linear-gradient(135deg, rgba(180, 140, 20, 0.95), rgba(120, 80, 10, 0.95));
   border: 2px solid #f0c040;
   border-radius: 10px;
   box-shadow: 0 0 20px rgba(240, 192, 64, 0.6);
+  /* モーダルコンテンツはスクロール対応 */
+  max-height: 90vh;
+  overflow-y: auto;
+  pointer-events: all;
 }
 
 .agari-title {
@@ -754,6 +770,28 @@ h1 {
   font-size: 14px;
   color: #ffe599;
   letter-spacing: 0.1em;
+}
+
+/* ─── 和了手牌 ───────────────────────────────────────── */
+.agari-hand {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  margin: 4px 0;
+}
+
+.agari-hand__tile {
+  width: 30px;
+  height: auto;
+  display: block;
+  border-radius: 2px;
+}
+
+.agari-hand__tile--winning {
+  outline: 3px solid #ff6b00;
+  outline-offset: -2px;
+  filter: drop-shadow(0 0 6px rgba(255, 107, 0, 0.9));
 }
 
 /* ─── 和了画面: 役テーブル ───────────────────────────── */

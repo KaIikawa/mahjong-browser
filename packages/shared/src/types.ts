@@ -47,6 +47,7 @@ export interface AgariInfo {
   fu: number;              // 符
   score: number;           // 獲得点数 (合計)
   scoreDetail: string;     // 表示用: "各XXXpt" or "XXXpt"
+  hand: Tile[];            // 和了時の手牌 (和了牌含む14枚)
 }
 
 // ─── 手番順序 ─────────────────────────────────────────
